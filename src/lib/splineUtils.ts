@@ -25,6 +25,8 @@ export async function loadSegmentJSON(url: string): Promise<SegmentData> {
 
   const data: SegmentJSON = await response.json();
 
+  console.log("Loaded JSON:", url, "meshOffset:", data.meshOffset);
+
   if (!data.points || data.points.length < 2) {
     throw new Error(`Insufficient points in: ${jsonUrl}`);
   }

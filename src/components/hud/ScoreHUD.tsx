@@ -23,7 +23,7 @@ export function ScoreHUD() {
     >
       <div>SCORE</div>
       <div style={{ fontSize: 36, fontWeight: "bold" }}>
-        {score.toString().padStart(6, "0")}
+        {score.toString().padStart(3, "0")}
       </div>
       {multiplier > 1 && (
         <div

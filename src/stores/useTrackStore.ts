@@ -31,16 +31,16 @@ export const useTrackStore = create<TrackStore>()(
       { url: "/segments/traintest2.glb", weight: 2 /*2*/, tags: ["curve"] },
       { url: "/segments/traintest3.glb", weight: 2 /*2*/, tags: ["curve"] },
       { url: "/segments/traintest4.glb", weight: 2 /*2*/, tags: ["curve"] },
-      { url: "/segments/straight-shot.glb", weight: 4, tags: ["straight"] },
-      { url: "/segments/left-s-curve.glb", weight: 0 /*2*/, tags: ["curve"] },
+      { url: "/segments/straight-shot.glb", weight: 3, tags: ["straight"] },
+      { url: "/segments/left-s-curve.glb", weight: 2 /*2*/, tags: ["curve"] },
       {
         url: "/segments/left-pipe-curve.glb",
-        weight: 8,
+        weight: 2,
         tags: ["curve"],
       },
       {
         url: "/segments/left-snake-curve.glb",
-        weight: 0,
+        weight: 2,
         tags: ["curve"],
       },
       {

@@ -26,6 +26,19 @@ const CLOUD_CONFIG: CloudData[] = [
   { id: 3, position: [120, 40, -300], scale: 1.8, speed: 0.2, opacity: 0.9 },
   { id: 4, position: [-100, 60, -150], scale: 1.0, speed: 0.35, opacity: 0.5 },
   { id: 5, position: [80, 50, -450], scale: 1.6, speed: 0.25, opacity: 0.7 },
+  { id: 6, position: [-80, 55, -150], scale: 1.6, speed: 0.25, opacity: 0.7 },
+  { id: 7, position: [70, 66, -450], scale: 1.6, speed: 0.25, opacity: 0.7 },
+  { id: 8, position: [40, 82, -50], scale: 1.6, speed: 0.25, opacity: 0.7 },
+  { id: 9, position: [44, 81, 45], scale: 1.6, speed: 0.25, opacity: 0.7 },
+  { id: 10, position: [120, 50, 125], scale: 1.6, speed: 0.25, opacity: 0.7 },
+  { id: 11, position: [45, 50, -10], scale: 1.6, speed: 0.25, opacity: 0.7 },
+  { id: 12, position: [-150, 39, -125], scale: 1.6, speed: 0.25, opacity: 0.7 },
+  { id: 13, position: [-400, 50, -125], scale: 1.6, speed: 0.25, opacity: 0.7 },
+  { id: 15, position: [-330, 40, -200], scale: 1.6, speed: 0.25, opacity: 0.7 },
+  { id: 16, position: [-190, 50, -300], scale: 1.6, speed: 0.25, opacity: 0.7 },
+  // { id: 17, position: [80, 50, -450], scale: 1.6, speed: 0.25, opacity: 0.7 },
+  // { id: 18, position: [80, 50, -450], scale: 1.6, speed: 0.25, opacity: 0.7 },
+  // { id: 19, position: [80, 50, -450], scale: 1.6, speed: 0.25, opacity: 0.7 },
 ];
 
 function SunSystem({
@@ -134,6 +147,7 @@ export function Environment({ trainPositionRef }: EnvironmentProps) {
 
       {/* warm atmospheric haze */}
 
+      <fogExp2 attach="fog" args={["#c8a882", 0.022]} />
       <fogExp2 attach="fog" args={["#c8a882", 0.022]} />
 
       {/* drifting clouds */}

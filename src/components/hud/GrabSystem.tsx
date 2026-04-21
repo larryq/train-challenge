@@ -29,6 +29,8 @@ export function GrabSystem({
   const grabMailbag = useEntityStore((s) => s.grabMailbag);
   const mailbags = useEntityStore((s) => s.mailbags);
   const setDeliveredText = useEntityStore((s) => s.setDeliveredText);
+  const signals = useEntityStore((s) => s.signals);
+  const setSignalGreen = useEntityStore((s) => s.setSignalGreen);
 
   // track mouse screen position for CrosshairVisual
   useEffect(() => {
@@ -54,6 +56,16 @@ export function GrabSystem({
     const meshes: THREE.Mesh[] = [];
     scene.traverse((obj) => {
       if (obj instanceof THREE.Mesh && obj.userData.isMailbag) {
+        meshes.push(obj);
+      }
+    });
+    return meshes;
+  }, [scene]);
+
+  const getSignalMeshes = useCallback((): THREE.Mesh[] => {
+    const meshes: THREE.Mesh[] = [];
+    scene.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && obj.userData.isSignal) {
         meshes.push(obj);
       }
     });
@@ -139,6 +151,25 @@ export function GrabSystem({
     [mailbags, grabMailbag, addScore, incrementStreak, setDeliveredText],
   );
 
+  const handleSignalGrab = useCallback(
+    (hit: THREE.Mesh) => {
+      const signalId = hit.userData.signalId as string;
+      if (!signalId) return;
+
+      const signal = signals.find((s) => s.id === signalId);
+      if (!signal || signal.isExpired || signal.isGreen) return; // already green -- ignore
+
+      const hitWorldPos = new THREE.Vector3();
+      hit.getWorldPosition(hitWorldPos);
+      const dist = trainPositionRef.current.distanceTo(hitWorldPos);
+      if (dist > GRAB_CONFIG.SIGNAL_GRAB_DISTANCE) return;
+
+      setSignalGreen(signalId);
+      console.log(`Signal ${signalId} turned green`);
+    },
+    [signals, setSignalGreen, trainPositionRef],
+  );
+
   const handleClick = useCallback(() => {
     raycaster.current.setFromCamera(pointerRef.current, camera);
 
@@ -167,15 +198,27 @@ export function GrabSystem({
       const dist = trainPositionRef.current.distanceTo(hitWorldPos);
       if (dist <= GRAB_CONFIG.GRAB_DISTANCE) {
         handleMailbagGrab(hit);
+        return;
       }
+    }
+
+    // check signals
+    const signalIntersects =
+      raycaster.current.intersectObjects(getSignalMeshes());
+    if (signalIntersects.length > 0) {
+      const hit = signalIntersects[0].object as THREE.Mesh;
+      handleSignalGrab(hit);
+      return;
     }
   }, [
     camera,
     getRubyMeshes,
     getMailbagMeshes,
+    getSignalMeshes,
     trainPositionRef,
     handleMailbagGrab,
     handleRubyGrab,
+    handleSignalGrab,
   ]);
 
   useEffect(() => {
@@ -196,15 +239,27 @@ export function GrabSystem({
     const bagIntersects =
       raycaster.current.intersectObjects(getMailbagMeshes());
 
+    const signalIntersects =
+      raycaster.current.intersectObjects(getSignalMeshes());
+
     // find closest hit across both types
-    const allIntersects = [...rubyIntersects, ...bagIntersects].sort(
-      (a, b) => a.distance - b.distance,
-    );
+    const allIntersects = [
+      ...rubyIntersects,
+      ...bagIntersects,
+      ...signalIntersects,
+    ].sort((a, b) => a.distance - b.distance);
 
     if (allIntersects.length > 0) {
       const hitWorldPos = new THREE.Vector3();
       allIntersects[0].object.getWorldPosition(hitWorldPos);
       const dist = trainPositionRef.current.distanceTo(hitWorldPos);
+
+      //signal stuff
+      const isSignal = allIntersects[0].object.userData.isSignal;
+      const threshold = isSignal
+        ? GRAB_CONFIG.SIGNAL_GRAB_DISTANCE
+        : GRAB_CONFIG.GRAB_DISTANCE;
+
       isActiveRef.current = dist < GRAB_CONFIG.GRAB_DISTANCE;
     } else {
       isActiveRef.current = false;

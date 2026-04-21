@@ -121,7 +121,7 @@ export function SegmentPreloader({ onReady }: Props): null {
         "/segments/left-pipe-curve.glb",
         {
           scene: lpc.scene as THREE.Group,
-          data: segmentData.get("/segments/left-s-curve.glb")!,
+          data: segmentData.get("/segments/left-pipe-curve.glb")!,
         },
       ],
     ]);

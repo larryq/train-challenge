@@ -61,6 +61,18 @@ export function SpawnManager({
   const removeMailbag = useEntityStore((s) => s.removeMailbag);
   const mailbags = useEntityStore((s) => s.mailbags);
 
+  //railroad signals
+  const spawnSignal = useEntityStore((s) => s.spawnSignal);
+  const expireSignal = useEntityStore((s) => s.expireSignal);
+  const removeSignal = useEntityStore((s) => s.removeSignal);
+  const setPenaltyText = useEntityStore((s) => s.setPenaltyText);
+  const deductScore = useGameStore((s) => s.deductScore);
+  const segmentLibrary = useTrackStore((s) => s.segmentLibrary);
+  const signals = useEntityStore((s) => s.signals);
+
+  const signalCounterRef = useRef(0);
+  const nextSignalChunkRef = useRef<number | null>(null);
+
   // refs
   const nextRubySpawnRef = useRef<number | null>(null);
   const nextMailbagSpawnRef = useRef<number | null>(null);
@@ -129,6 +141,42 @@ export function SpawnManager({
 
     console.log("SpawnManager: spawned mailbag at", position);
   }, [masterCurveRef, trainTRef, spawnMailbag]);
+
+  const spawnSignalAtPoint = useCallback(
+    (worldPoints: THREE.Vector3[], _segmentUrls: string[]) => {
+      const curve = masterCurveRef.current;
+      if (!curve) return;
+
+      // find straight segment world points
+      // pick a point from middle section of world points
+      const midIndex = Math.floor(worldPoints.length * 0.5);
+      const pos = worldPoints[midIndex].clone();
+      const next = worldPoints[Math.min(midIndex + 1, worldPoints.length - 1)];
+
+      const tangent = new THREE.Vector3().subVectors(next, pos).normalize();
+      const up = new THREE.Vector3(0, 1, 0);
+      const right = new THREE.Vector3().crossVectors(tangent, up).normalize();
+
+      const side = Math.random() > 0.5 ? 1 : -1;
+      const sideLabel = side > 0 ? "right" : "left";
+
+      const signalPos = pos
+        .clone()
+        .addScaledVector(right, side * GRAB_CONFIG.SIGNAL_LATERAL_OFFSET);
+      signalPos.y = 0; // sits on ground
+
+      spawnSignal({
+        id: `signal_${signalCounterRef.current++}`,
+        position: signalPos,
+        side: sideLabel as "left" | "right",
+        spawnedAt: Date.now(),
+        isGreen: false,
+        isExpired: false,
+        isPenalized: false,
+      });
+    },
+    [masterCurveRef, spawnSignal],
+  );
 
   useFrame(() => {
     if (phase !== "playing") return;
@@ -212,6 +260,90 @@ export function SpawnManager({
       if (toBag.dot(tangent) < -GRAB_CONFIG.EXPIRY_BUFFER) {
         expireMailbag(bag.id);
         setTimeout(() => removeMailbag(bag.id), 1000);
+      }
+    });
+
+    // in useFrame -- after ruby and mailbag spawning
+    // check if we should spawn a signal
+    if (nextSignalChunkRef.current === null) {
+      nextSignalChunkRef.current = dist + 60; // first signal after 60 units
+    }
+
+    if (dist >= nextSignalChunkRef.current) {
+      // check if current track section is straight
+      // by sampling tangent consistency -- if tangent doesn't change much it's straight
+      const curve = masterCurveRef.current;
+      if (curve) {
+        const t1 = trainTRef.current;
+        const t2 = Math.min(t1 + 0.05, 0.9999);
+        const tan1 = curve.getTangentAt(t1);
+        const tan2 = curve.getTangentAt(t2);
+        const dot = tan1.dot(tan2); // 1.0 = perfectly straight, less = curved
+
+        if (dot > 0.18) {
+          // only place on nearly straight sections
+          // find a point ahead on the curve
+          const aheadT = Math.min(t1 + 30 / curve.getLength(), 0.9999);
+          const aheadPos = curve.getPointAt(aheadT);
+          const tangent = curve.getTangentAt(aheadT).normalize();
+          const up = new THREE.Vector3(0, 1, 0);
+          const right = new THREE.Vector3()
+            .crossVectors(tangent, up)
+            .normalize();
+
+          const side = Math.random() > 0.5 ? 1 : -1;
+          const sideLabel = side > 0 ? "right" : "left";
+
+          const signalPos = aheadPos
+            .clone()
+            .addScaledVector(right, side * GRAB_CONFIG.SIGNAL_LATERAL_OFFSET);
+          signalPos.y = 0;
+
+          spawnSignal({
+            id: `signal_${signalCounterRef.current++}`,
+            position: signalPos,
+            side: sideLabel as "left" | "right",
+            spawnedAt: Date.now(),
+            isGreen: false,
+            isExpired: false,
+            isPenalized: false,
+          });
+        }
+
+        // next signal regardless of whether we placed one
+        nextSignalChunkRef.current = dist + 80 + Math.random() * 40;
+      }
+    }
+
+    // expire signals and check for penalty
+    //const trainPos = trainPositionRef.current;
+    const curveTangent =
+      masterCurveRef.current
+        ?.getTangentAt(THREE.MathUtils.clamp(trainTRef.current, 0, 0.9999))
+        .normalize() ?? new THREE.Vector3(0, 0, 1);
+
+    signals.forEach((signal) => {
+      if (signal.isExpired) return;
+
+      const toSignal = signal.position.clone().sub(trainPos);
+
+      if (toSignal.dot(curveTangent) < -GRAB_CONFIG.EXPIRY_BUFFER) {
+        // train has passed signal
+        if (!signal.isGreen && !signal.isPenalized) {
+          // ran a red -- deduct score
+          deductScore(GRAB_CONFIG.SIGNAL_PENALTY_POINTS);
+          setPenaltyText({
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 3,
+          });
+          setTimeout(
+            () => setPenaltyText(null),
+            GRAB_CONFIG.SIGNAL_PENALTY_DURATION,
+          );
+        }
+
+        expireSignal(signal.id);
+        setTimeout(() => removeSignal(signal.id), 1000);
       }
     });
   });

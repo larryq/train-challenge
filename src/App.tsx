@@ -24,6 +24,8 @@ import { GrassManager } from "./components/environment/GrassManager";
 import type { ChunkGrassData } from "./components/track/ChunkManager";
 import { TreeManager } from "./components/environment/TreeManager";
 import type { ChunkTreeData } from "./lib/placementUtils";
+import { Signals } from "./components/entities/Signals";
+import { IntroScreen } from "./components/hud/IntroScreen";
 
 // ---- Scene props ------------------------------------------
 
@@ -49,6 +51,7 @@ function BonusText() {
         color: "#ffdd44",
         fontSize: 48,
         fontWeight: "bold",
+        backgroundColor: "transparent",
         fontFamily: "monospace",
         textShadow: "0 0 10px #ff8800, 0 0 20px #ff4400",
         pointerEvents: "none",
@@ -113,6 +116,7 @@ function Scene({
           />
           <RubyClusters trainPositionRef={trainPositionRef} />
           <Mailbags trainPositionRef={trainPositionRef} />
+          <Signals trainPositionRef={trainPositionRef} />
           <GrabSystem
             trainPositionRef={trainPositionRef}
             isActiveRef={isActiveRef}
@@ -122,7 +126,7 @@ function Scene({
       )}
 
       {/* spline visualizer -- uncomment to debug */}
-      <SplineVisualizer masterCurveRef={masterCurveRef} />
+      {/* <SplineVisualizer masterCurveRef={masterCurveRef} /> */}
       <GrassManager chunksGrassRef={chunksGrassRef} />
       <TreeManager chunksTreeRef={chunksTreeRef} />
       <ambientLight intensity={0.5} />
@@ -161,10 +165,15 @@ function DeliveredText() {
   return (
     <div
       style={{
-        position: "fixed",
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+        background: "#1a1a2e",
         left: event.x,
         top: event.y,
         transform: "translate(-50%, -50%)",
+        backgroundColor: "transparent",
         color: "#ffffff",
         fontSize: 36,
         fontWeight: "bold",
@@ -176,6 +185,34 @@ function DeliveredText() {
       }}
     >
       DELIVERED!
+    </div>
+  );
+}
+
+//if you run a red signal without changing it to green first
+function PenaltyText() {
+  const event = useEntityStore((s) => s.penaltyTextEvent);
+  if (!event) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        left: event.x,
+        top: event.y,
+        transform: "translate(-50%, -50%)",
+        color: "#ff2222",
+        fontSize: 42,
+        backgroundColor: "transparent",
+        fontWeight: "bold",
+        fontFamily: "monospace",
+        textShadow: "0 0 10px #ff0000, 0 0 20px #ff0000",
+        pointerEvents: "none",
+        animation: `floatUp ${GRAB_CONFIG.SIGNAL_PENALTY_DURATION}ms ease-out forwards`,
+        zIndex: 100,
+      }}
+    >
+      RAN A RED!
     </div>
   );
 }
@@ -218,10 +255,12 @@ export default function App() {
       <ScoreHUD />
       <BonusText />
       <DeliveredText />
+      <PenaltyText />
       <CrosshairVisual
         isActiveRef={isActiveRef}
         mouseScreenRef={mouseScreenRef}
       />
+      <IntroScreen />
     </div>
   );
 }

@@ -24,11 +24,12 @@ interface GameStore {
   resetStreak: () => void;
   completeLevel: () => void;
   startNextLevel: () => void;
+  startGame: () => void;
 }
 
 export const useGameStore = create<GameStore>()(
   subscribeWithSelector((set) => ({
-    phase: "playing",
+    phase: "menu",
     currentLevel: 1,
     sessionScore: 0,
     levelScore: 0,
@@ -86,6 +87,8 @@ export const useGameStore = create<GameStore>()(
         phase: "summary",
         sessionScore: state.sessionScore + state.levelScore,
       })),
+
+    startGame: () => set({ phase: "playing" }),
 
     startNextLevel: () =>
       set((state) => ({

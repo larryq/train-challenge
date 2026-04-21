@@ -13,7 +13,7 @@ const CAMERA_HEIGHT = 4; // units above train
 const CAMERA_BACK = 8; // units behind train
 const LOOK_AHEAD_T = 0.015; // how far ahead on curve camera looks
 const POSITION_LERP = 4; // higher = snappier camera position
-const LOOKAT_LERP = 3; // higher = snappier camera rotation
+const LOOKAT_LERP = 5; // higher = snappier camera rotation
 
 export function CameraRig({
   trainPositionRef,

@@ -52,7 +52,9 @@ export function TreeManager({ chunksTreeRef }: TreeManagerProps) {
 
   const materials = useMemo(
     () =>
-      VARIETY_COLORS.map((color) => new THREE.MeshLambertMaterial({ color })),
+      VARIETY_COLORS.map(
+        (color) => new THREE.MeshLambertMaterial({ color, fog: false }),
+      ),
     [],
   );
 

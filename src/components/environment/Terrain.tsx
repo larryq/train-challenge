@@ -11,10 +11,14 @@ import terrainFrag from "../../shaders/terrain.frag.glsl";
 const TerrainMaterial = shaderMaterial(
   {
     uTrainPosition: new THREE.Vector3(),
-    uColorSoil: new THREE.Color("#7b6044"),
-    uColorGrassLow: new THREE.Color("#2d5a1b"),
-    uColorGrassMid: new THREE.Color("#4a7c3f"),
-    uColorGrassDry: new THREE.Color("#8a9a3f"),
+    // uColorSoil: new THREE.Color("#7b6044"),
+    // uColorGrassLow: new THREE.Color("#558e3e"),
+    // uColorGrassMid: new THREE.Color("#4a7c3f"),
+    // uColorGrassDry: new THREE.Color("#8a9a3f"),
+    uColorSoil: new THREE.Color("#9f8264"), // was #5c3d1e -- brighter
+    uColorGrassLow: new THREE.Color("#3d7a25"), // was #2d5a1b -- more saturated
+    uColorGrassMid: new THREE.Color("#5a9a4a"), // was #4a7c3f -- brighter
+    uColorGrassDry: new THREE.Color("#9aaa5a"), // was #8a9a3f -- warmer
     fogColor: new THREE.Color("#c8a882"),
     uNoiseOffset: new THREE.Vector2(0, 0),
     fogDensity: 0.018,
