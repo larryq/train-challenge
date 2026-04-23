@@ -246,9 +246,6 @@ export function placeLandmarks(
       lakePos.y = 0;
 
       const excluded = isExcluded(lakePos, exclusionZones, radius * 0.5);
-      console.log(
-        `  lake attempt ${attempt}: lateral=${lateral.toFixed(1)} radius=${radius.toFixed(1)} excluded=${excluded}`,
-      );
 
       if (excluded) continue;
 

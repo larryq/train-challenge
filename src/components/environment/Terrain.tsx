@@ -1,4 +1,4 @@
-import { useRef, useMemo, type JSX } from "react";
+import { useRef, useMemo, type JSX, useEffect } from "react";
 import { useFrame, extend } from "@react-three/fiber";
 import * as THREE from "three";
 import { shaderMaterial } from "@react-three/drei";
@@ -6,6 +6,14 @@ import { shaderMaterial } from "@react-three/drei";
 import terrainVert from "../../shaders/terrain.vert.glsl";
 // @ts-expect-error expect a complaint in shader include
 import terrainFrag from "../../shaders/terrain.frag.glsl";
+import { useDayNight } from "../../hooks/useDayNight";
+
+//current grass and soil colors, prior to adding night / day code
+
+// uColorSoil: new THREE.Color("#9f8264"), // was #5c3d1e -- brighter
+// uColorGrassLow: new THREE.Color("#3d7a25"), // was #2d5a1b -- more saturated
+// uColorGrassMid: new THREE.Color("#5a9a4a"), // was #4a7c3f -- brighter
+// uColorGrassDry: new THREE.Color("#9aaa5a"), // was #8a9a3f -- warmer
 
 // create the shader material
 const TerrainMaterial = shaderMaterial(
@@ -49,9 +57,10 @@ declare module "@react-three/fiber" {
 
 interface TerrainProps {
   trainPositionRef: React.MutableRefObject<THREE.Vector3>;
+  cycleValue: number;
 }
 
-export function Terrain({ trainPositionRef }: TerrainProps) {
+export function Terrain({ trainPositionRef, cycleValue }: TerrainProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
 
@@ -62,6 +71,33 @@ export function Terrain({ trainPositionRef }: TerrainProps) {
     geo.rotateX(-Math.PI / 2);
     return geo;
   }, []);
+
+  // useEffect(() => {
+  //   if (!materialRef.current) return;
+  //   const t = cycleValue;
+
+  //   // lerp terrain colors toward dusk palette
+  //   materialRef.current.uniforms.uColorSoil.value.lerpColors(
+  //     new THREE.Color("#5c3d1e"), // day soil
+  //     new THREE.Color("#3d2a1a"), // dusk soil
+  //     t,
+  //   );
+  //   materialRef.current.uniforms.uColorGrassLow.value.lerpColors(
+  //     new THREE.Color("#2d5a1b"), // day grass low
+  //     new THREE.Color("#1a3a12"), // dusk grass low
+  //     t,
+  //   );
+  //   materialRef.current.uniforms.uColorGrassMid.value.lerpColors(
+  //     new THREE.Color("#4a7c3f"), // day grass mid
+  //     new THREE.Color("#2a4a28"), // dusk grass mid
+  //     t,
+  //   );
+  //   materialRef.current.uniforms.uColorGrassDry.value.lerpColors(
+  //     new THREE.Color("#8a9a3f"), // day grass dry
+  //     new THREE.Color("#4a5a2a"), // dusk grass dry
+  //     t,
+  //   );
+  // }, [cycleValue]);
 
   useFrame(() => {
     if (!meshRef.current || !materialRef.current) return;
@@ -74,7 +110,30 @@ export function Terrain({ trainPositionRef }: TerrainProps) {
 
     // update shader uniform so noise stays world-anchored
     materialRef.current.uniforms.uTrainPosition.value.copy(trainPos);
-    //materialRef.current.uniforms.uCameraPosition.value.copy(camera.position);
+
+    const t = cycleValue;
+
+    // lerp terrain colors toward dusk palette
+    materialRef.current.uniforms.uColorSoil.value.lerpColors(
+      new THREE.Color("#5c3d1e"), // day soil
+      new THREE.Color("#3d2a1a"), // dusk soil
+      t,
+    );
+    materialRef.current.uniforms.uColorGrassLow.value.lerpColors(
+      new THREE.Color("#2d5a1b"), // day grass low
+      new THREE.Color("#1a3a12"), // dusk grass low
+      t,
+    );
+    materialRef.current.uniforms.uColorGrassMid.value.lerpColors(
+      new THREE.Color("#4a7c3f"), // day grass mid
+      new THREE.Color("#2a4a28"), // dusk grass mid
+      t,
+    );
+    materialRef.current.uniforms.uColorGrassDry.value.lerpColors(
+      new THREE.Color("#8a9a3f"), // day grass dry
+      new THREE.Color("#4a5a2a"), // dusk grass dry
+      t,
+    );
   });
 
   return (
@@ -85,7 +144,7 @@ export function Terrain({ trainPositionRef }: TerrainProps) {
       receiveShadow
       renderOrder={-1}
     >
-      {/* @ts-ignore -- custom material */}
+      {/* @ts-expect-error -- custom material */}
       <terrainMaterial
         ref={materialRef}
         fog={true}

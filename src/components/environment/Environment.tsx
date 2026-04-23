@@ -4,6 +4,9 @@ import { useFrame } from "@react-three/fiber";
 import { Sky, Cloud, Clouds } from "@react-three/drei";
 import { DistantHills } from "./DistantHills";
 import * as THREE from "three";
+import { useDayNight, type DayNightValues } from "../../hooks/useDayNight";
+import { Stars } from "./Stars";
+import { memo } from "react";
 
 const SUN_POSITION: [number, number, number] = [100, 30, -400];
 
@@ -17,6 +20,7 @@ interface CloudData {
 
 interface EnvironmentProps {
   trainPositionRef: React.MutableRefObject<THREE.Vector3>;
+  dayNight: DayNightValues;
 }
 
 const CLOUD_CONFIG: CloudData[] = [
@@ -43,27 +47,34 @@ const CLOUD_CONFIG: CloudData[] = [
 
 function SunSystem({
   trainPositionRef,
+  sunPosition,
+  sunIntensity,
 }: {
   trainPositionRef: React.MutableRefObject<THREE.Vector3>;
+  sunPosition: [number, number, number];
+  sunIntensity: number;
 }) {
   const sunRef = useRef<THREE.Mesh>(null);
   useFrame(() => {
     if (sunRef.current) {
-      sunRef.current.position.x = trainPositionRef.current.x + SUN_POSITION[0];
-      sunRef.current.position.y = SUN_POSITION[1];
-      sunRef.current.position.z = trainPositionRef.current.z + SUN_POSITION[2];
+      sunRef.current.position.x = trainPositionRef.current.x + sunPosition[0];
+      sunRef.current.position.y = sunPosition[1];
+      sunRef.current.position.z = trainPositionRef.current.z + sunPosition[2];
     }
   });
 
   return (
-    <mesh position={SUN_POSITION} ref={sunRef}>
+    <mesh ref={sunRef}>
       <sphereGeometry args={[8, 16, 16]} />
-      <meshBasicMaterial color="#fffabb" fog={false} />
+      <meshBasicMaterial
+        color={sunIntensity > 0.5 ? "#fffabb" : "#ff4400"}
+        fog={false}
+      />
     </mesh>
   );
 }
 
-function CloudSystem({
+const CloudSystem = memo(function CloudSystem({
   trainPositionRef,
 }: {
   trainPositionRef: React.MutableRefObject<THREE.Vector3>;
@@ -106,31 +117,37 @@ function CloudSystem({
       </Clouds>
     </group>
   );
-}
+});
 
-export function Environment({ trainPositionRef }: EnvironmentProps) {
+export function Environment({ trainPositionRef, dayNight }: EnvironmentProps) {
+  const dn = dayNight;
   return (
     <>
       {/* physically based sky */}
       <Sky
         distance={450000}
-        sunPosition={SUN_POSITION}
+        sunPosition={dn.sunPosition}
         inclination={0.48}
         azimuth={0.25}
-        turbidity={8}
-        rayleigh={2}
+        turbidity={dn.skyTurbidity}
+        rayleigh={dn.skyRayleigh}
         mieCoefficient={0.005}
         mieDirectionalG={0.8}
       />
 
       {/* sun mesh -- sits in front of sky */}
-      <SunSystem trainPositionRef={trainPositionRef} />
+      <SunSystem
+        trainPositionRef={trainPositionRef}
+        sunPosition={dn.sunPosition}
+        //sunPosition={[100, 2, -400]}
+        sunIntensity={dn.sunIntensity}
+      />
 
       {/* late afternoon warm lighting */}
       <directionalLight
-        position={SUN_POSITION}
-        intensity={2.2}
-        color="#ffb347"
+        position={dn.sunPosition}
+        intensity={dn.sunIntensity}
+        color={dn.sunColor}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-far={200}
@@ -140,19 +157,20 @@ export function Environment({ trainPositionRef }: EnvironmentProps) {
         shadow-camera-bottom={-100}
       />
 
-      <ambientLight intensity={0.4} color="#ffcc88" />
+      <ambientLight intensity={dn.ambientIntensity} color={dn.ambientColor} />
 
       {/* sky/ground bounce */}
       <hemisphereLight args={["#ffaa44", "#4a6644", 0.5]} />
 
       {/* warm atmospheric haze */}
 
-      <fogExp2 attach="fog" args={["#c8a882", 0.022]} />
-      <fogExp2 attach="fog" args={["#c8a882", 0.022]} />
+      <fogExp2 attach="fog" args={[dn.fogColor, dn.fogDensity]} />
 
       {/* drifting clouds */}
       <CloudSystem trainPositionRef={trainPositionRef} />
       <DistantHills trainPositionRef={trainPositionRef} />
+      {/* stars fade in during dusk */}
+      <Stars opacity={dn.cycleValue} />
     </>
   );
 }

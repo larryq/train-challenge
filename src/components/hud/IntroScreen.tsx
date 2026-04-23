@@ -42,7 +42,7 @@ export function IntroScreen() {
           border: "3px solid #c4791a",
           borderRadius: "4px",
           padding: "40px 50px",
-          maxWidth: "560px",
+          maxWidth: "660px",
           width: "90%",
           textAlign: "center",
           position: "relative",
@@ -325,7 +325,7 @@ export function IntroScreen() {
             fontStyle: "italic",
           }}
         >
-          Good luck!
+          Good luck conductor!
         </div>
 
         {/* divider */}

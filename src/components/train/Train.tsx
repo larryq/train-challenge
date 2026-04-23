@@ -1,25 +1,66 @@
-import { useEffect, useRef } from "react";
+/* eslint-disable react-hooks/refs */
+import { useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { useGLTF } from "@react-three/drei";
+import { Sparkles, useGLTF } from "@react-three/drei";
 import { usePlayerStore } from "../../stores/usePlayerStore";
 import { useGameStore } from "../../stores/useGameStore";
 import { getLevelConfig } from "../../lib/levelConfig";
 import { useTrackStore } from "../../stores/useTrackStore";
+// @ts-expect-error expect a complaint in shader include
+import trainlightVert from "../../shaders/trainlight.vert.glsl";
+// @ts-expect-error expect a complaint in shader include
+import trainlightFrag from "../../shaders/trainlight.frag.glsl";
+
+// function createSparkMaterial(side: number): THREE.ShaderMaterial {
+//   return new THREE.ShaderMaterial({
+//     uniforms: {
+//       uTime: { value: 0 },
+//       uCurvature: { value: 0 },
+//       uSide: { value: side }, // -1 left, 1 right
+//     },
+//     vertexShader: sparkVert,
+//     fragmentShader: sparkFrag,
+//     transparent: true,
+//     depthWrite: false,
+//     side: THREE.DoubleSide,
+//     blending: THREE.AdditiveBlending, // sparks add light, looks hot
+//   });
+// }
 
 interface TrainProps {
   masterCurveRef: React.MutableRefObject<THREE.CatmullRomCurve3 | null>;
   trainPositionRef: React.MutableRefObject<THREE.Vector3>;
   trainTRef: React.MutableRefObject<number>;
+  cycleValue: number;
+}
+
+function createTrainLightMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uCycleValue: { value: 0 },
+      uTime: { value: 0 },
+    },
+    vertexShader: trainlightVert,
+    fragmentShader: trainlightFrag,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
 }
 
 export function Train({
   masterCurveRef,
   trainPositionRef,
   trainTRef,
+  cycleValue,
 }: TrainProps) {
   const trainRef = useRef<THREE.Group>(null);
   const targetRef = useRef<THREE.Mesh>(null);
+
+  const trainLightMatRef = useRef<THREE.ShaderMaterial | null>(null);
+  const curvatureRef = useRef(0);
 
   const currentPitch = useRef(0);
 
@@ -32,6 +73,9 @@ export function Train({
   const { scene: trainScene } = useGLTF("/models/train1.glb");
 
   const wheelRefs = useRef<THREE.Object3D[]>([]);
+  const [curvature, setCurvature] = useState(0);
+  const leftWheelPos = useRef(new THREE.Vector3());
+  const rightWheelPos = new THREE.Vector3();
 
   // find wheels after GLB loads
   useEffect(() => {
@@ -47,7 +91,26 @@ export function Train({
     );
   }, [trainScene]);
 
-  useFrame((_, delta) => {
+  useEffect(() => {
+    const mesh = trainScene.getObjectByName("trainlight") as THREE.Mesh;
+    if (!mesh) {
+      console.warn("trainlight mesh not found");
+      return;
+    }
+
+    const mat = createTrainLightMaterial();
+    mesh.material = mat;
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 999;
+
+    trainLightMatRef.current = mat;
+    console.log("Train light material applied");
+  }, [trainScene]);
+
+  const leftMesh = trainScene.getObjectByName("wheel009") as THREE.Mesh;
+  const rightMesh = trainScene.getObjectByName("wheel011") as THREE.Mesh;
+
+  useFrame(({ clock }, delta) => {
     if (!isReady) return; // don't move train until track is ready
     const curve = masterCurveRef.current;
     if (!curve || !trainRef.current || !targetRef.current) return;
@@ -71,20 +134,6 @@ export function Train({
     // so we never actually reach the end
     const newT = Math.min(trainTRef.current + tIncrement, 0.9999);
     trainTRef.current = newT;
-
-    // // position
-    // const pos = curve.getPointAt(newT);
-    // trainRef.current.position.copy(pos);
-    // trainRef.current.position.y += 0.5; // sit above rail height
-
-    // // lookahead target for yaw
-    // const lookAheadT = Math.min(newT + 0.005, 0.9999);
-    // const targetPos = curve.getPointAt(lookAheadT);
-    // targetRef.current.position.copy(targetPos);
-    // targetRef.current.position.y += 0.5;
-
-    // // yaw -- look at the target
-    // trainRef.current.lookAt(targetRef.current.position);
 
     const axleSpacing = 2.8; // world units between front and rear axle.  Hand-tuned value.
     const curveLength = curve.getLength();
@@ -130,6 +179,36 @@ export function Train({
     const distanceDelta = worldSpeed * safeDelta;
     addDistance(distanceDelta);
     setSpeed(worldSpeed);
+
+    // compute curvature for spark effect
+    const tan1 = curve.getTangentAt(newT);
+    const tan2 = curve.getTangentAt(Math.min(newT + 0.02, 0.9999));
+    const rawCurvature = 1.0 - tan1.dot(tan2);
+
+    // amplify and smooth -- small curves barely register, sharp ones are obvious
+    const targetCurvature = THREE.MathUtils.clamp(rawCurvature * 25, 0, 1);
+    curvatureRef.current = THREE.MathUtils.lerp(
+      curvatureRef.current,
+      targetCurvature,
+      safeDelta * 4,
+    );
+    // update React state every ~100ms to drive Sparkles props
+    // don't update every frame -- Sparkles re-renders on prop change
+    if (Math.random() < 0.06) {
+      setCurvature(curvatureRef.current);
+      //console.log("curvature value: " + curvatureRef.current);
+    }
+
+    if (leftMesh && rightMesh) {
+      leftMesh.getWorldPosition(leftWheelPos.current);
+      rightMesh.getWorldPosition(rightWheelPos);
+      // console.log(JSON.stringify(leftWheelPos, null, 2));
+    }
+    if (trainLightMatRef.current) {
+      trainLightMatRef.current.uniforms.uCycleValue.value = cycleValue;
+      trainLightMatRef.current.uniforms.uTime.value =
+        clock.getElapsedTime() % 10.0;
+    }
   });
 
   return (
@@ -146,7 +225,45 @@ export function Train({
           scale={[0.65, 0.65, 0.65]} // tune this
         >
           <primitive object={trainScene} />
+          {/* spark effects at rear wheels */}
+          {curvature > 0.99 && (
+            <>
+              <Sparkles
+                position={[-0.47, -0.19, -0.6]} // left wheel local pos
+                count={30}
+                //scale={1.5}
+                scale={[0.15, 0.15, 0.15]}
+                size={curvature * 2}
+                speed={curvature * 0.005}
+                color="#ececdc"
+                noise={0.25}
+                opacity={curvature}
+              />
+              {/* <Sparkles
+                position={rightWheelPos}
+                count={Math.floor(curvature * 80)}
+                scale={1.5}
+                size={curvature * 8}
+                speed={curvature * 6}
+                color="#ff6600"
+                noise={0.5}
+              />*/}
+              {/* <mesh position={[0, 0, 0]}>
+                <sphereGeometry args={[0.1, 16, 16]} />
+                <meshBasicMaterial color="red" />
+              </mesh> */}
+            </>
+          )}
         </group>
+        <spotLight
+          position={[0, 1.5, 2]}
+          angle={Math.PI / 7}
+          penumbra={0.4}
+          intensity={cycleValue * 20} // fades in as dusk arrives
+          distance={80}
+          color="#fff5e0"
+          castShadow={false}
+        />
       </group>
     </>
   );

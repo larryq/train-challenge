@@ -31,6 +31,8 @@ export function CrosshairVisual({
     ? GRAB_CONFIG.CROSSHAIR_COLOR_ACTIVE
     : GRAB_CONFIG.CROSSHAIR_COLOR_DEFAULT;
 
+  const fillColor = isActive ? GRAB_CONFIG.CROSSHAIR_FILL_COLOR_ACTIVE : "none";
+
   return (
     <div
       style={{
@@ -49,7 +51,8 @@ export function CrosshairVisual({
           cx={half}
           cy={half}
           r={half - 2}
-          fill="none"
+          //fill="none"
+          fill={fillColor}
           stroke={color}
           strokeWidth={1.5}
         />

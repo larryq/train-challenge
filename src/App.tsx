@@ -26,6 +26,7 @@ import { TreeManager } from "./components/environment/TreeManager";
 import type { ChunkTreeData } from "./lib/placementUtils";
 import { Signals } from "./components/entities/Signals";
 import { IntroScreen } from "./components/hud/IntroScreen";
+import { useDayNight } from "./hooks/useDayNight";
 
 // ---- Scene props ------------------------------------------
 
@@ -78,6 +79,7 @@ function Scene({
   > | null>(null);
   const chunksGrassRef = useRef<ChunkGrassData[]>([]);
   const chunksTreeRef = useRef<ChunkTreeData[]>([]);
+  const dayNight = useDayNight();
 
   const handleReady = useCallback((segments: Map<string, LoadedSegment>) => {
     setLoadedSegments(segments);
@@ -85,7 +87,7 @@ function Scene({
 
   return (
     <>
-      <Environment trainPositionRef={trainPositionRef} />
+      <Environment trainPositionRef={trainPositionRef} dayNight={dayNight} />
       <SegmentPreloader onReady={handleReady} />
 
       {loadedSegments && (
@@ -102,13 +104,17 @@ function Scene({
             masterCurveRef={masterCurveRef}
             trainPositionRef={trainPositionRef}
             trainTRef={trainTRef}
+            cycleValue={dayNight.cycleValue}
           />
           <CameraRig
             trainPositionRef={trainPositionRef}
             masterCurveRef={masterCurveRef}
             trainTRef={trainTRef}
           />
-          <Terrain trainPositionRef={trainPositionRef} />
+          <Terrain
+            trainPositionRef={trainPositionRef}
+            cycleValue={dayNight.cycleValue}
+          />
           <SpawnManager
             masterCurveRef={masterCurveRef}
             trainPositionRef={trainPositionRef}
@@ -184,7 +190,7 @@ function DeliveredText() {
         zIndex: 100,
       }}
     >
-      DELIVERED!
+      MAILBAG DELIVERED!
     </div>
   );
 }
