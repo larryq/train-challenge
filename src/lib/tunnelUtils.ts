@@ -36,7 +36,7 @@ export function detectHillIntersection(
 export function carveHillGeometry(
   geo: THREE.BufferGeometry,
   hillWorldPos: THREE.Vector3,
-  hillRadius: number,
+  _hillRadius: number,
   splinePoints: THREE.Vector3[],
   tunnelRadius: number,
 ): THREE.BufferGeometry {
