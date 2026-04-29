@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useTrackStore } from "../../stores/useTrackStore";
 import type { LoadedSegment } from "./SegmentPreloader";
+
 import {
   placeSegment,
   getWorldPoints,
@@ -25,6 +26,7 @@ import {
   // generateNearbyHillGeometry,
   placeNearbySphericalHills,
   generateSphericalHillGeometry,
+  generateTexturedSphericalHillGeometry,
 } from "../../lib/hillUtils";
 
 import {
@@ -35,6 +37,8 @@ import {
   createWaterMaterial,
   LANDMARK_CONFIG,
 } from "../../lib/landmarkUtils";
+import { processTunnels } from "../../lib/tunnelUtils";
+import { useTexture } from "@react-three/drei";
 
 // ---- types ------------------------------------------------
 interface Chunk {
@@ -54,6 +58,7 @@ export interface ChunkManagerProps {
   trainTRef: React.MutableRefObject<number>;
   chunksGrassRef: React.MutableRefObject<ChunkGrassData[]>;
   chunksTreeRef: React.MutableRefObject<ChunkTreeData[]>;
+  cycleValue: number;
 }
 
 export interface ChunkGrassData {
@@ -126,6 +131,17 @@ function buildChunk(
   prevEndDirection: THREE.Vector3,
   threeScene: THREE.Scene,
   existingSplinePoints: THREE.Vector3[] = [],
+  hillTextures: {
+    map: THREE.Texture;
+    normalMap: THREE.Texture;
+    aoMap: THREE.Texture;
+    displacementMap: THREE.Texture;
+  },
+  hillTextureSets: Array<{
+    map: THREE.Texture;
+    normalMap: THREE.Texture;
+    aoMap: THREE.Texture;
+  }>,
 ): Chunk {
   const group = new THREE.Group();
   group.name = `Chunk_${id}`;
@@ -162,9 +178,11 @@ function buildChunk(
       .normalize();
 
     // clamp Y drift on flat segments
-    if (Math.abs(currentEndDir.y) < 0.1) {
+    if (Math.abs(currentEndDir.y) < 0.05) {
       currentEndDir.y = 0;
       currentEndDir.normalize();
+      currentEndPos.y = 0;
+      console.log("just reset y ending position");
     }
 
     // apply mesh offset correction -- purely visual
@@ -190,9 +208,10 @@ function buildChunk(
     .normalize();
 
   // clamp Y on chunk end direction too
-  if (Math.abs(endDir.y) < 0.1) {
+  if (Math.abs(endDir.y) < 0.05) {
     endDir.y = 0;
     endDir.normalize();
+    endPos.y = 0;
   }
   const tempCurve = new THREE.CatmullRomCurve3(
     worldPoints,
@@ -200,62 +219,6 @@ function buildChunk(
     "catmullrom",
     0.85,
   );
-  // console.log(
-  //   `Chunk ${id} built: length=${tempCurve.getLength().toFixed(1)} segments=${segmentUrls.length}`,
-  // );
-
-  //START COMMENT OUT HILLS
-  // // place nearby hills -- added to chunk group so they despawn automatically
-  // const hillConfigs = placeNearbyHills(id, worldPoints);
-
-  // const hillMaterial = new THREE.MeshLambertMaterial({
-  //   vertexColors: true,
-  //   side: THREE.DoubleSide,
-  //   fog: true,
-  // });
-
-  // hillConfigs.forEach((config) => {
-  //   const geo = generateNearbyHillGeometry(
-  //     config.height,
-  //     config.radius,
-  //     config.seed,
-  //   );
-
-  //   const hillMaterial = new THREE.MeshLambertMaterial({
-  //     vertexColors: true,
-  //     side: THREE.DoubleSide,
-  //     fog: true,
-  //     transparent: HILL_FADE_DURATION > 0, // only enable if fading
-  //     opacity: HILL_FADE_DURATION > 0 ? 0 : 1, // start invisible if fading
-  //   });
-
-  //   const mesh = new THREE.Mesh(geo, hillMaterial);
-  //   mesh.position.copy(config.position);
-  //   mesh.name = "NearbyHill";
-
-  //   // store spawn time for animation
-  //   mesh.userData.spawnTime = Date.now();
-
-  //   // start flat if growing
-  //   if (HILL_GROW_DURATION > 0) {
-  //     mesh.scale.y = 0.001; // not exactly 0 -- avoids degenerate geometry
-  //   }
-
-  //   group.add(mesh);
-  // });
-
-  // // dispose material when chunk is disposed
-  // // hillMaterial is shared across all hills in this chunk
-  // // disposeChunk handles mesh geometry, but not shared materials
-  // // store reference on group for cleanup
-  // (group as any).__hillMaterial = hillMaterial;
-
-  //END COMMENT OUT HILLS
-
-  // DOME HILLS -- commented out for testing spherical
-  // const hillConfigs = placeNearbyHills(id, worldPoints)
-  // const hillMaterial = new THREE.MeshLambertMaterial({ ... })
-  // hillConfigs.forEach(config => { ... })
 
   // build exclusion zone registry for this chunk
   const exclusionZones: ExclusionZone[] = [];
@@ -276,6 +239,9 @@ function buildChunk(
   //     type: 'station',
   //   })
   // })
+
+  //DEBUG BELOW-- UNCOMMENT TO HELP CAUSE HILLS TO INTERSECT TRACK
+  //exclusionZones.length = 0;
 
   const sphericalHillConfigs = placeNearbySphericalHills(
     id,
@@ -302,14 +268,80 @@ function buildChunk(
     shininess: 15, // subtle specular -- rocky but not glossy
   });
 
+  const hillMeshes: THREE.Mesh[] = [];
+  // sphericalHillConfigs.forEach((config) => {
+  //   const geo = generateSphericalHillGeometry(
+  //     config.radius,
+  //     config.seed,
+  //     4, // 4 outcropping centers per hill
+  //   );
+
+  //   const mesh = new THREE.Mesh(geo, sphericalHillMaterial.clone());
+  //   mesh.name = "NearbyHill"; // same name -- reuses existing fade/grow animation
+
+  //   // bury 55% underground
+  //   mesh.position.copy(config.position);
+  //   mesh.position.y = -config.radius * 0.55;
+
+  //   mesh.userData.spawnTime = Date.now();
+
+  //   if (HILL_GROW_DURATION > 0) {
+  //     mesh.scale.y = 0.001;
+  //   }
+
+  //   group.add(mesh);
+
+  //   //variable below used for track / hill intersection detection
+  //   hillMeshes.push(mesh);
+  // });
+
+  ///TESTING
+
+  const materialTexture = new THREE.MeshStandardMaterial({
+    map: hillTextures.map,
+    normalMap: hillTextures.normalMap,
+    aoMap: hillTextures.aoMap,
+    displacementMap: hillTextures.displacementMap,
+    roughness: 0.8,
+    metalness: 0.0,
+    side: THREE.DoubleSide,
+    vertexColors: Math.random() < 0.5,
+    fog: false,
+  });
+  hillTextures.map.needsUpdate = true;
+  hillTextures.normalMap.needsUpdate = true;
+  hillTextures.aoMap.needsUpdate = true;
+  hillTextures.displacementMap.needsUpdate = true;
+
+  // const materialTexture = new THREE.MeshStandardMaterial({
+  //   color: "#ff0000", // bright red
+  //   vertexColors: false,
+  //   fog: false,
+  // });
+
   sphericalHillConfigs.forEach((config) => {
-    const geo = generateSphericalHillGeometry(
+    const geo = generateTexturedSphericalHillGeometry(
       config.radius,
       config.seed,
       4, // 4 outcropping centers per hill
     );
 
-    const mesh = new THREE.Mesh(geo, sphericalHillMaterial.clone());
+    // pick texture set based on seed -- consistent per hill
+    const setIndex = config.seed % hillTextureSets.length;
+    const texSet = hillTextureSets[setIndex];
+
+    const mat = new THREE.MeshStandardMaterial({
+      map: texSet.map,
+      normalMap: texSet.normalMap,
+      aoMap: texSet.aoMap,
+      roughness: 0.8,
+      metalness: 0.0,
+      side: THREE.DoubleSide,
+      vertexColors: Math.random() > 0.99999,
+      fog: false,
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
     mesh.name = "NearbyHill"; // same name -- reuses existing fade/grow animation
 
     // bury 55% underground
@@ -323,7 +355,15 @@ function buildChunk(
     }
 
     group.add(mesh);
+
+    //variable below used for track / hill intersection detection
+    hillMeshes.push(mesh);
   });
+
+  //END TEST
+
+  // process tunnels -- carve geometry where track intersects hills
+  processTunnels(worldPoints, sphericalHillConfigs, hillMeshes);
 
   // store material reference for disposal
   (group as any).__hillMaterial = sphericalHillMaterial;
@@ -495,6 +535,7 @@ export function ChunkManager({
   trainTRef,
   chunksGrassRef,
   chunksTreeRef,
+  cycleValue,
 }: ChunkManagerProps) {
   const { scene } = useThree();
   const segmentLibrary = useTrackStore((s) => s.segmentLibrary);
@@ -587,6 +628,69 @@ export function ChunkManager({
     masterCurveRef.current = newCurve;
   }, [masterCurveRef, trainTRef]);
 
+  const hillTextures = useTexture({
+    map: "/textures/grass_path_3_diff_1k.jpg",
+    normalMap: "/textures/grass_path_3_nor_gl_1k.jpg",
+    aoMap: "/textures/grass_path_3_ao_1k.jpg",
+    displacementMap: "/textures/grass_path_3_disp_1k.jpg",
+  });
+
+  const textureSet1 = useTexture({
+    map: "/textures/grass_path_3_diff_1k.jpg",
+    normalMap: "/textures/grass_path_3_nor_gl_1k.jpg",
+    aoMap: "/textures/grass_path_3_ao_1k.jpg",
+    displacementMap: "/textures/grass_path_3_disp_1k.jpg",
+  });
+  const textureSet2 = useTexture({
+    map: "/textures/Ground037_1K-JPG_Color.jpg",
+    normalMap: "/textures/Ground037_1K-JPG_NormalGL.jpg",
+    aoMap: "/textures/Ground037_1K-JPG_AmbientOcclusion.jpg",
+  });
+  const textureSet3 = useTexture({
+    map: "/textures/coast_sand_rocks_02_diff_1k.jpg",
+    normalMap: "/textures/coast_sand_rocks_02_nor_gl_1k.jpg",
+    aoMap: "/textures/coast_sand_rocks_02_ao_1k.jpg",
+  });
+  const textureSet4 = useTexture({
+    map: "/textures/snow_02_diff_1k.jpg",
+    normalMap: "/textures/snow_02_nor_gl_1k.jpg",
+    aoMap: "/textures/snow_02_ao_1k.jpg",
+  });
+
+  const hillTexturesRef = useRef(hillTextures);
+  useEffect(() => {
+    hillTexturesRef.current = hillTextures;
+  }, [hillTextures]);
+
+  const hillTextureSetsRef = useRef<
+    Array<{
+      map: THREE.Texture;
+      normalMap: THREE.Texture;
+      aoMap: THREE.Texture;
+    }>
+  >([]);
+
+  useEffect(() => {
+    const sets = [textureSet1, /*textureSet2,*/ textureSet3, textureSet4];
+
+    hillTextureSetsRef.current = sets.map((set) => {
+      const map = set.map.clone();
+      const normalMap = set.normalMap.clone();
+      const aoMap = set.aoMap.clone();
+
+      [map, normalMap, aoMap].forEach((tex) => {
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(12, 12);
+        tex.needsUpdate = true;
+      });
+
+      map.colorSpace = THREE.SRGBColorSpace;
+
+      return { map, normalMap, aoMap };
+    });
+  });
+
   // build one chunk and append it
   const buildNextChunk = useCallback(() => {
     if (isBuildingRef.current) return;
@@ -622,6 +726,8 @@ export function ChunkManager({
         prevEndDir,
         scene,
         existingSplinePoints, // pass existing points
+        hillTexturesRef.current,
+        hillTextureSetsRef.current,
       );
 
       chunksRef.current.push(chunk);
@@ -669,27 +775,24 @@ export function ChunkManager({
     console.log(`ChunkManager: despawned chunk ${oldest.id}`);
   }, [scene, rebuildMasterCurve]);
 
-  // initial build -- preload N chunks on mount
+  useEffect(() => {
+    const textures = hillTexturesRef.current;
+    Object.values(textures).forEach((tex) => {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(12, 12);
+    });
+    textures.map.colorSpace = THREE.SRGBColorSpace;
+  }, []);
+
   useEffect(() => {
     // build chunks one at a time, each waiting for the previous
     const buildAll = () => {
-      console.log(
-        "buildAll: starting with",
-        chunksRef.current.length,
-        "existing chunks",
-      );
       for (let i = 0; i < chunksToPreload; i++) {
         buildNextChunk();
-        console.log(
-          "buildAll: after build",
-          i,
-          "chunks:",
-          chunksRef.current.length,
-        );
       }
       isReadyRef.current = true;
       setReady(true);
-      console.log("ChunkManager: ready");
     };
 
     // defer to next frame so scene is fully mounted
@@ -767,6 +870,15 @@ export function ChunkManager({
             if (stdMat.opacity < targetOpacity) {
               stdMat.opacity = currentOpacity;
               stdMat.needsUpdate = true;
+            }
+          }
+
+          //darken hills at night
+          if (obj.name === "NearbyHill") {
+            const mat = mesh.material as THREE.MeshStandardMaterial;
+            if (mat.aoMap) {
+              mat.aoMapIntensity = THREE.MathUtils.lerp(0.8, 1.8, cycleValue);
+              mat.needsUpdate = true;
             }
           }
         });

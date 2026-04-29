@@ -18,7 +18,7 @@ export function SegmentPreloader({ onReady }: Props): null {
   const t3 = useGLTF("/segments/traintest3.glb");
   const t4 = useGLTF("/segments/traintest4.glb");
   const ss = useGLTF("/segments/straight-shot.glb");
-  const sr = useGLTF("/segments/straight-rise.glb");
+  const sr = useGLTF("/segments/straight-rise2.glb");
   const lsc = useGLTF("/segments/left-s-curve.glb");
   const lsnc = useGLTF("/segments/left-snake-curve.glb");
   const lpc = useGLTF("/segments/left-pipe-curve.glb");
@@ -35,7 +35,7 @@ export function SegmentPreloader({ onReady }: Props): null {
       "/segments/traintest3.glb",
       "/segments/traintest4.glb",
       "/segments/straight-shot.glb",
-      "/segments/straight-rise.glb",
+      "/segments/straight-rise2.glb",
       "/segments/left-s-curve.glb",
       "/segments/left-snake-curve.glb",
       "/segments/left-pipe-curve.glb",
@@ -97,10 +97,10 @@ export function SegmentPreloader({ onReady }: Props): null {
         },
       ],
       [
-        "/segments/straight-rise.glb",
+        "/segments/straight-rise2.glb",
         {
           scene: sr.scene as THREE.Group,
-          data: segmentData.get("/segments/straight-rise.glb")!,
+          data: segmentData.get("/segments/straight-rise2.glb")!,
         },
       ],
       [
@@ -138,7 +138,7 @@ useGLTF.preload("/segments/traintest2.glb");
 useGLTF.preload("/segments/traintest3.glb");
 useGLTF.preload("/segments/traintest4.glb");
 useGLTF.preload("/segments/straight-shot.glb");
-useGLTF.preload("/segments/straight-rise.glb");
+useGLTF.preload("/segments/straight-rise2.glb");
 useGLTF.preload("/segments/left-s-curve.glb");
 useGLTF.preload("/segments/left-snake-curve.glb");
 useGLTF.preload("/segments/left-pipe-curve.glb");

@@ -22,11 +22,13 @@ import { GRAB_CONFIG } from "./lib/grabConfig";
 import { Mailbags } from "./components/entities/Mailbags";
 import { GrassManager } from "./components/environment/GrassManager";
 import type { ChunkGrassData } from "./components/track/ChunkManager";
-import { TreeManager } from "./components/environment/TreeManager";
+//import { TreeManager } from "./components/environment/TreeManager";
+import { TreeManager } from "./components/environment/TreeManager2";
 import type { ChunkTreeData } from "./lib/placementUtils";
 import { Signals } from "./components/entities/Signals";
 import { IntroScreen } from "./components/hud/IntroScreen";
 import { useDayNight } from "./hooks/useDayNight";
+import { Terrain2 } from "./components/environment/Terrain2";
 
 // ---- Scene props ------------------------------------------
 
@@ -99,6 +101,7 @@ function Scene({
             trainTRef={trainTRef}
             chunksGrassRef={chunksGrassRef}
             chunksTreeRef={chunksTreeRef}
+            cycleValue={dayNight.cycleValue}
           />
           <Train
             masterCurveRef={masterCurveRef}
@@ -111,10 +114,11 @@ function Scene({
             masterCurveRef={masterCurveRef}
             trainTRef={trainTRef}
           />
-          <Terrain
+          {/* <Terrain
             trainPositionRef={trainPositionRef}
             cycleValue={dayNight.cycleValue}
-          />
+          /> */}
+          <Terrain2 trainPositionRef={trainPositionRef} />
           <SpawnManager
             masterCurveRef={masterCurveRef}
             trainPositionRef={trainPositionRef}

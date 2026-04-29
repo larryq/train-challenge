@@ -44,7 +44,7 @@ export const useTrackStore = create<TrackStore>()(
         tags: ["curve"],
       },
       {
-        url: "/segments/straight-rise.glb",
+        url: "/segments/straight-rise2.glb",
         weight: 3,
         tags: ["straight", "slope"],
       },

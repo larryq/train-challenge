@@ -2,6 +2,9 @@
 import * as THREE from "three";
 import { type ExclusionZone, isExcluded } from "./placementUtils";
 
+// TESTING ONLY -- set to true to force hills onto track
+const FORCE_HILL_INTERSECTIONS = false;
+
 interface HillConfig {
   height: number;
   radius: number;
@@ -372,41 +375,6 @@ interface OutcroppingCenter {
   influence: number; // angular radius of effect in radians
 }
 
-// function getSphericalHillColor(
-//   heightFactor: number, // 0 = base, 1 = peak
-//   displacement: number, // negative = eroded, positive = outcropping
-// ): THREE.Color {
-//   const darkSoil = new THREE.Color("#3d2b1a");
-//   const darkGreen = new THREE.Color("#2d5a1b");
-//   const greyGreen = new THREE.Color("#5a6a4a");
-//   const rockyGrey = new THREE.Color("#7a7a6a");
-//   const darkShadow = new THREE.Color("#2a3a2a");
-
-//   // base color from height
-//   let baseColor: THREE.Color;
-//   if (heightFactor < 0.1) {
-//     baseColor = darkSoil.clone();
-//   } else if (heightFactor < 0.4) {
-//     baseColor = darkSoil.clone().lerp(darkGreen, (heightFactor - 0.1) / 0.3);
-//   } else if (heightFactor < 0.75) {
-//     baseColor = darkGreen.clone().lerp(greyGreen, (heightFactor - 0.4) / 0.35);
-//   } else {
-//     baseColor = greyGreen.clone().lerp(rockyGrey, (heightFactor - 0.75) / 0.25);
-//   }
-
-//   // blend toward rocky or shadowed based on displacement
-//   const dispStrength = Math.min(Math.abs(displacement) * 3, 1);
-//   if (displacement > 0.05) {
-//     // outcropping -- shift toward rocky grey
-//     return baseColor.lerp(rockyGrey.clone(), dispStrength);
-//   } else if (displacement < -0.05) {
-//     // erosion -- shift toward dark shadow
-//     return baseColor.lerp(darkShadow.clone(), dispStrength);
-//   }
-
-//   return baseColor;
-// }
-
 function getSphericalHillColor(
   heightFactor: number,
   displacement: number,
@@ -440,6 +408,13 @@ function getSphericalHillColor(
   } else if (displacement < -0.02) {
     return baseColor.lerp(darkShadow.clone(), dispStrength * 0.6);
   }
+
+  //tone down the colors so that they don't overwhelm the hill textures
+  const strengths = [0.1, 0.2, 0.3];
+  const VERTEX_COLOR_STRENGTH =
+    strengths[Math.floor(Math.random() * strengths.length)];
+
+  baseColor.lerp(new THREE.Color(1, 1, 1), 1 - VERTEX_COLOR_STRENGTH);
 
   return baseColor;
 }
@@ -582,6 +557,103 @@ export function generateSphericalHillGeometry(
   return geo;
 }
 
+export function generateTexturedSphericalHillGeometry(
+  radius: number,
+  seed: number,
+  outcroppingCount = 4,
+): THREE.BufferGeometry {
+  const widthSegments = 24;
+  const heightSegments = 24;
+
+  let s = seed * 7919 + 12347;
+  const rng = () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+
+  // generate outcropping centers for this hill
+  const centers = generateOutcroppingCenters(outcroppingCount, rng);
+
+  const vertices: number[] = [];
+  const colors: number[] = [];
+  const normals: number[] = [];
+  const indices: number[] = [];
+  const uvs: number[] = [];
+
+  // generate sphere vertices with displacement
+  for (let lat = 0; lat <= heightSegments; lat++) {
+    const phi = (lat / heightSegments) * Math.PI; // 0 = top, PI = bottom
+
+    for (let lon = 0; lon <= widthSegments; lon++) {
+      const theta = (lon / widthSegments) * Math.PI * 2;
+
+      // base unit sphere position
+      const nx = Math.sin(phi) * Math.cos(theta);
+      const ny = Math.cos(phi);
+      const nz = Math.sin(phi) * Math.sin(theta);
+
+      // compute displacement for this vertex
+      const displacement = getOutcroppingDisplacement(phi, theta, centers);
+
+      // only displace upper hemisphere -- below equator stays smooth
+      // blends out between equator and slightly below
+      const hemisphereBlend = Math.max(
+        0,
+        Math.min(1, (Math.PI * 0.6 - phi) / (Math.PI * 0.1)),
+      );
+
+      // reduce displacement near the very top of a hill to prevent extreme outcroppings that look unnatural
+      const topBlend = Math.min(1, phi / (Math.PI * 0.15)); // 0 at tip, 1 after 15 degrees
+      const finalDisplacement = displacement * hemisphereBlend * topBlend;
+
+      // displaced radius
+      const r = radius * (1 + finalDisplacement);
+
+      vertices.push(nx * r, ny * r, nz * r);
+
+      // normals point outward from center
+      normals.push(nx, ny, nz);
+
+      uvs.push(lon / widthSegments, 1 - lat / heightSegments);
+
+      // height factor -- 1 at top, 0 at equator/bottom
+      const heightFactor = Math.max(0, ny); // ny = 1 at top, 0 at equator
+
+      const col = getSphericalHillColor(heightFactor, finalDisplacement);
+      colors.push(col.r, col.g, col.b);
+    }
+  }
+
+  // build indices -- same quad pattern as before
+  for (let lat = 0; lat < heightSegments; lat++) {
+    for (let lon = 0; lon < widthSegments; lon++) {
+      const a = lat * (widthSegments + 1) + lon;
+      const b = a + widthSegments + 1;
+      const c = a + 1;
+      const d = b + 1;
+
+      indices.push(a, b, d);
+      indices.push(a, d, c);
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  geo.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geo.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setAttribute(
+    "uv2",
+    new THREE.BufferAttribute(geo.attributes.uv.array, 2),
+  );
+  geo.setIndex(indices);
+
+  //recalculate normals after displacement, otherwise texture shading will be whacky
+  geo.computeVertexNormals();
+
+  return geo;
+}
+
 export interface SphericalHillConfig {
   position: THREE.Vector3;
   radius: number;
@@ -598,6 +670,9 @@ export function placeNearbySphericalHills(
 ): SphericalHillConfig[] {
   const configs: SphericalHillConfig[] = [];
   const localZones = [...exclusionZones];
+  // in placeNearbySphericalHills
+  minLateralDist = FORCE_HILL_INTERSECTIONS ? 0 : minLateralDist;
+  maxLateralDist = FORCE_HILL_INTERSECTIONS ? 10 : maxLateralDist;
 
   let s = chunkId * 6271 + 31337;
   const rng = () => {
