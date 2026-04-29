@@ -29,6 +29,7 @@ import { Signals } from "./components/entities/Signals";
 import { IntroScreen } from "./components/hud/IntroScreen";
 import { useDayNight } from "./hooks/useDayNight";
 import { Terrain2 } from "./components/environment/Terrain2";
+import { Stats } from "@react-three/drei";
 
 // ---- Scene props ------------------------------------------
 
@@ -89,6 +90,7 @@ function Scene({
 
   return (
     <>
+      <Stats />
       <Environment trainPositionRef={trainPositionRef} dayNight={dayNight} />
       <SegmentPreloader onReady={handleReady} />
 

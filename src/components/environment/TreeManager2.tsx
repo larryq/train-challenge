@@ -7,7 +7,7 @@ import type { ChunkTreeData, TreeInstance } from "../../lib/placementUtils";
 const MAX_INSTANCES_PER_VARIETY = 500;
 
 const TREE_URLS = [
-  //"/models/tree2.glb",
+  "/models/tree2.glb",
   "/models/tree1.glb",
   "/models/tree3.glb",
   "/models/tree4.glb",
@@ -82,6 +82,8 @@ export function TreeManager({ chunksTreeRef }: TreeManagerProps) {
   const glb0 = useGLTF(TREE_URLS[0]);
   const glb1 = useGLTF(TREE_URLS[1]);
   const glb2 = useGLTF(TREE_URLS[2]);
+  const glb3 = useGLTF(TREE_URLS[3]);
+  const glb4 = useGLTF(TREE_URLS[4]);
 
   // 2D array -- meshRefs[varietyIndex][subMeshIndex]
   const meshRefs = useRef<THREE.InstancedMesh[][]>([[], [], []]);
@@ -94,6 +96,8 @@ export function TreeManager({ chunksTreeRef }: TreeManagerProps) {
       glb0.scene as THREE.Group,
       glb1.scene as THREE.Group,
       glb2.scene as THREE.Group,
+      glb3.scene as THREE.Group,
+      glb4.scene as THREE.Group,
     ];
 
     const allMeshGroups: THREE.InstancedMesh[][] = [];
@@ -102,6 +106,16 @@ export function TreeManager({ chunksTreeRef }: TreeManagerProps) {
       const meshDatas = extractAllFromGLB(gltfScene);
       const meshGroup: THREE.InstancedMesh[] = [];
 
+      gltfScene.traverse((obj) => {
+        if (!(obj instanceof THREE.Mesh)) return;
+        const mats = Array.isArray(obj.material)
+          ? obj.material
+          : [obj.material];
+        mats.forEach((mat) => {
+          mat.fog = false;
+          mat.needsUpdate = true;
+        });
+      });
       if (meshDatas.length === 0) {
         // fallback -- no meshes found in GLB
         console.warn(
@@ -150,7 +164,7 @@ export function TreeManager({ chunksTreeRef }: TreeManagerProps) {
         });
       });
     };
-  }, [scene, glb0.scene, glb1.scene, glb2.scene]);
+  }, [scene, glb0.scene, glb1.scene, glb2.scene, glb3.scene, glb4.scene]);
 
   const rebuildInstances = () => {
     const data = chunksTreeRef.current;
