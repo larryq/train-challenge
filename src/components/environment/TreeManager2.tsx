@@ -8,10 +8,10 @@ const MAX_INSTANCES_PER_VARIETY = 500;
 
 const TREE_URLS = [
   "/models/tree2.glb",
-  "/models/tree1.glb",
+  "/models/tree4.glb",
   "/models/tree3.glb",
   "/models/tree4.glb",
-  "/models/tree1.glb",
+  "/models/tree5.glb",
 ];
 
 // ---- fallbacks --------------------------------------------

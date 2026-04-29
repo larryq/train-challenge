@@ -126,8 +126,8 @@ export function placeTrees(
   worldPoints: THREE.Vector3[],
   exclusionZones: ExclusionZone[],
   countPerSide = 30,
-  minLateral = 10,
-  maxLateral = 50,
+  minLateral = 15,
+  maxLateral = 55,
 ): TreeInstance[] {
   const instances: TreeInstance[] = [];
   const placedPositions: THREE.Vector3[] = [];
