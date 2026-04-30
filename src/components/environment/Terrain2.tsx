@@ -19,10 +19,22 @@ export function Terrain2({ trainPositionRef }: Terrain2Props) {
   const { gl } = useThree();
 
   // load all three texture maps
+  // const [colorMap, normalMap, aoMap] = useTexture([
+  //   "/textures/rocky_terrain_02_diff_1k.jpg",
+  //   "/textures/rocky_terrain_02_nor_gl_1k.jpg",
+  //   "/textures/rocky_terrain_02_ao_1k.jpg",
+  // ]);
+
+  // const [colorMap, normalMap, aoMap] = useTexture([
+  //   "/textures/Ground037_1K-JPG_Color.jpg",
+  //   "/textures/Ground037_1K-JPG_NormalGL.jpg",
+  //   "/textures/Ground037_1K-JPG_AmbientOcclusion.jpg",
+  // ]);
+
   const [colorMap, normalMap, aoMap] = useTexture([
-    "/textures/rocky_terrain_02_diff_1k.jpg",
-    "/textures/rocky_terrain_02_nor_gl_1k.jpg",
-    "/textures/rocky_terrain_02_ao_1k.jpg",
+    "/textures/coast_sand_rocks_02_diff_1k.jpg",
+    "/textures/coast_sand_rocks_02_nor_gl_1k.jpg",
+    "/textures/coast_sand_rocks_02_ao_1k.jpg",
   ]);
 
   // configure all maps identically

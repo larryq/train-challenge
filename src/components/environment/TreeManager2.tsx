@@ -3,12 +3,13 @@ import { useThree, useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import type { ChunkTreeData, TreeInstance } from "../../lib/placementUtils";
+import { TERRAIN_SETS } from "../../hooks/useTerrainCycle";
 
 const MAX_INSTANCES_PER_VARIETY = 500;
 
 const TREE_URLS = [
   "/models/tree2.glb",
-  "/models/tree4.glb",
+  "/models/tree1.glb",
   "/models/tree3.glb",
   "/models/tree4.glb",
   "/models/tree5.glb",
@@ -62,6 +63,11 @@ function extractAllFromGLB(gltfScene: THREE.Group): MeshData[] {
 
 // ---- helpers ----------------------------------------------
 
+interface TreeManagerProps {
+  chunksTreeRef: React.MutableRefObject<ChunkTreeData[]>;
+  /*activeTreeGlbs: [string, string, string];*/
+}
+
 function initInstancedMesh(mesh: THREE.InstancedMesh) {
   const zeroMatrix = new THREE.Matrix4().makeScale(0, 0, 0);
   for (let j = 0; j < MAX_INSTANCES_PER_VARIETY; j++) {
@@ -79,11 +85,15 @@ interface TreeManagerProps {
 export function TreeManager({ chunksTreeRef }: TreeManagerProps) {
   const { scene } = useThree();
 
+  const glb3 = useGLTF(TREE_URLS[3]);
+  const glb4 = useGLTF(TREE_URLS[4]);
   const glb0 = useGLTF(TREE_URLS[0]);
   const glb1 = useGLTF(TREE_URLS[1]);
   const glb2 = useGLTF(TREE_URLS[2]);
-  const glb3 = useGLTF(TREE_URLS[3]);
-  const glb4 = useGLTF(TREE_URLS[4]);
+
+  //   const glb0 = useGLTF(activeTreeGlbs[0]);
+  //   const glb1 = useGLTF(activeTreeGlbs[1]);
+  //   const glb2 = useGLTF(activeTreeGlbs[2]);
 
   // 2D array -- meshRefs[varietyIndex][subMeshIndex]
   const meshRefs = useRef<THREE.InstancedMesh[][]>([[], [], []]);
@@ -228,3 +238,6 @@ export function TreeManager({ chunksTreeRef }: TreeManagerProps) {
 
 // preload GLBs
 TREE_URLS.forEach((url) => useGLTF.preload(url));
+// TERRAIN_SETS.forEach((set) => {
+//   set.treeGlbs.forEach((url) => useGLTF.preload(url));
+// });

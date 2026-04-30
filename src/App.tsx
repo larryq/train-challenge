@@ -29,6 +29,8 @@ import { Signals } from "./components/entities/Signals";
 import { IntroScreen } from "./components/hud/IntroScreen";
 import { useDayNight } from "./hooks/useDayNight";
 import { Terrain2 } from "./components/environment/Terrain2";
+import { Terrain3 } from "./components/environment/Terrain3";
+import { useTerrainCycle } from "./hooks/useTerrainCycle";
 import { Stats } from "@react-three/drei";
 
 // ---- Scene props ------------------------------------------
@@ -83,6 +85,7 @@ function Scene({
   const chunksGrassRef = useRef<ChunkGrassData[]>([]);
   const chunksTreeRef = useRef<ChunkTreeData[]>([]);
   const dayNight = useDayNight();
+  const terrainCycle = useTerrainCycle();
 
   const handleReady = useCallback((segments: Map<string, LoadedSegment>) => {
     setLoadedSegments(segments);
@@ -120,6 +123,11 @@ function Scene({
             trainPositionRef={trainPositionRef}
             cycleValue={dayNight.cycleValue}
           /> */}
+          {/* <Terrain3
+            trainPositionRef={trainPositionRef}
+            cycleValue={dayNight.cycleValue}
+            terrainCycle={terrainCycle}
+          /> */}
           <Terrain2 trainPositionRef={trainPositionRef} />
           <SpawnManager
             masterCurveRef={masterCurveRef}
@@ -140,7 +148,11 @@ function Scene({
       {/* spline visualizer -- uncomment to debug */}
       {/* <SplineVisualizer masterCurveRef={masterCurveRef} /> */}
       <GrassManager chunksGrassRef={chunksGrassRef} />
-      <TreeManager chunksTreeRef={chunksTreeRef} />
+      <TreeManager
+        /*key={terrainCycle.activeSet.name}*/ // remount when terrain set changes
+        chunksTreeRef={chunksTreeRef}
+        /*activeTreeGlbs={terrainCycle.activeSet.treeGlbs}*/
+      />
       <ambientLight intensity={0.5} />
       <directionalLight position={[10, 20, 10]} intensity={1} />
     </>
@@ -196,7 +208,7 @@ function DeliveredText() {
         zIndex: 100,
       }}
     >
-      MAILBAG DELIVERED!
+      MAILBAG PICKUP!
     </div>
   );
 }

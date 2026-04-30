@@ -7,10 +7,15 @@ import { usePlayerStore } from "../../stores/usePlayerStore";
 import { useGameStore } from "../../stores/useGameStore";
 import { getLevelConfig } from "../../lib/levelConfig";
 import { useTrackStore } from "../../stores/useTrackStore";
+import { ChimneySmoke } from "./ChimneySmoke";
 // @ts-expect-error expect a complaint in shader include
 import trainlightVert from "../../shaders/trainlight.vert.glsl";
 // @ts-expect-error expect a complaint in shader include
 import trainlightFrag from "../../shaders/trainlight.frag.glsl";
+// @ts-expect-error expect a complaint in shader include
+import smokeVert from "../../shaders/smoke.vert.glsl";
+// @ts-expect-error expect a complaint in shader include
+import smokeFrag from "../../shaders/smoke.frag.glsl";
 
 // function createSparkMaterial(side: number): THREE.ShaderMaterial {
 //   return new THREE.ShaderMaterial({
@@ -33,6 +38,24 @@ interface TrainProps {
   trainPositionRef: React.MutableRefObject<THREE.Vector3>;
   trainTRef: React.MutableRefObject<number>;
   cycleValue: number;
+}
+
+function createSmokeMaterial(): THREE.ShaderMaterial {
+  console.log("smokeVert:", smokeVert);
+  console.log("smokeFrag:", smokeFrag);
+
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uLeanAmount: { value: 0.8 }, // tune -- how far smoke leans back
+    },
+    vertexShader: smokeVert,
+    fragmentShader: smokeFrag,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.NormalBlending,
+  });
 }
 
 function createTrainLightMaterial(): THREE.ShaderMaterial {
@@ -60,6 +83,7 @@ export function Train({
   const targetRef = useRef<THREE.Mesh>(null);
 
   const trainLightMatRef = useRef<THREE.ShaderMaterial | null>(null);
+  const smokeMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
   const curvatureRef = useRef(0);
 
   const currentPitch = useRef(0);
@@ -106,6 +130,22 @@ export function Train({
     trainLightMatRef.current = mat;
     console.log("Train light material applied");
   }, [trainScene]);
+
+  // useEffect(() => {
+  //   const smokeMesh = trainScene.getObjectByName("chimney_smoke") as THREE.Mesh;
+  //   if (!smokeMesh) {
+  //     console.warn("chimney_smoke mesh not found");
+  //     return;
+  //   }
+
+  //   const mat = createSmokeMaterial();
+  //   smokeMesh.material = mat;
+  //   smokeMesh.frustumCulled = false;
+  //   smokeMesh.renderOrder = 10;
+
+  //   smokeMaterialRef.current = mat;
+  //   console.log("Smoke material applied");
+  // }, [trainScene]);
 
   const leftMesh = trainScene.getObjectByName("wheel009") as THREE.Mesh;
   const rightMesh = trainScene.getObjectByName("wheel011") as THREE.Mesh;
@@ -209,6 +249,11 @@ export function Train({
       trainLightMatRef.current.uniforms.uTime.value =
         clock.getElapsedTime() % 10.0;
     }
+
+    if (smokeMaterialRef.current) {
+      smokeMaterialRef.current.uniforms.uTime.value =
+        clock.getElapsedTime() % 10.0;
+    }
   });
 
   return (
@@ -225,6 +270,7 @@ export function Train({
           scale={[0.65, 0.65, 0.65]} // tune this
         >
           <primitive object={trainScene} />
+          <ChimneySmoke />
           {/* spark effects at rear wheels */}
           {curvature > 0.99 && (
             <>
