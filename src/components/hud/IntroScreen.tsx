@@ -296,8 +296,8 @@ export function IntroScreen() {
             textAlign: "left",
           }}
         >
-          Ride the rails and enjoy the scenery, or collect rubies and mailbags
-          along the way to add to your score.
+          Ride the rails and enjoy the scenery, or collect mailbags and floating
+          rubies along the way to add to your score.
         </div>
 
         <div
@@ -310,8 +310,8 @@ export function IntroScreen() {
             textAlign: "left",
           }}
         >
-          Be sure to click on red signals to turn them green before passing, or
-          else your score will suffer.
+          Be sure to click on flashing red signals to turn them green before
+          passing, or else your score will suffer.
         </div>
 
         <div
