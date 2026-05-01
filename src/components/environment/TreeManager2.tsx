@@ -102,12 +102,24 @@ export function TreeManager({ chunksTreeRef }: TreeManagerProps) {
   const dummy = useRef(new THREE.Object3D());
 
   useEffect(() => {
+    const glbs = [glb0, glb1, glb2];
+    glbs.forEach((glb, i) => {
+      const box = new THREE.Box3().setFromObject(glb.scene);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      console.log(
+        `Tree variety ${i} bounds:`,
+        `size: ${size.toArray().map((v) => v.toFixed(2))}`,
+        `center offset from origin: ${center.toArray().map((v) => v.toFixed(2))}`,
+      );
+    });
+  }, []);
+
+  useEffect(() => {
     const glbScenes = [
       glb0.scene as THREE.Group,
       glb1.scene as THREE.Group,
       glb2.scene as THREE.Group,
-      glb3.scene as THREE.Group,
-      glb4.scene as THREE.Group,
     ];
 
     const allMeshGroups: THREE.InstancedMesh[][] = [];
@@ -122,7 +134,7 @@ export function TreeManager({ chunksTreeRef }: TreeManagerProps) {
           ? obj.material
           : [obj.material];
         mats.forEach((mat) => {
-          mat.fog = false;
+          mat.fog = true;
           mat.needsUpdate = true;
         });
       });
@@ -237,7 +249,7 @@ export function TreeManager({ chunksTreeRef }: TreeManagerProps) {
 }
 
 // preload GLBs
-TREE_URLS.forEach((url) => useGLTF.preload(url));
+// TREE_URLS.forEach((url) => useGLTF.preload(url));
 LEVEL_CONFIGS.forEach((config) => {
   config.treeGlbs.forEach((url) => useGLTF.preload(url));
 });

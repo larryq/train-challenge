@@ -126,8 +126,8 @@ export function placeTrees(
   worldPoints: THREE.Vector3[],
   exclusionZones: ExclusionZone[],
   countPerSide = 30,
-  minLateral = 15,
-  maxLateral = 55,
+  minLateral = 8,
+  maxLateral = 35,
 ): TreeInstance[] {
   const instances: TreeInstance[] = [];
   const placedPositions: THREE.Vector3[] = [];
@@ -190,6 +190,18 @@ export function placeTrees(
         continue;
 
       placedPositions.push(treePos.clone());
+
+      // const minDist = Math.min(
+      //   ...worldPoints.map((wp) =>
+      //     new THREE.Vector2(treePos.x, treePos.z).distanceTo(
+      //       new THREE.Vector2(wp.x, wp.z),
+      //     ),
+      //   ),
+      // );
+      // console.log(
+      //   "PLACED tree -- min dist to any track point:",
+      //   minDist.toFixed(2),
+      // );
 
       const variety = pickVariety();
       lastVariety = variety;

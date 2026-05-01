@@ -187,10 +187,10 @@ export function Train({
     // train center is midpoint between axles
     const centerPos = frontPos.clone().add(rearPos).multiplyScalar(0.5);
     trainRef.current.position.copy(centerPos);
-    trainRef.current.position.y += 0.5;
+    trainRef.current.position.y += 0.2;
 
     // train faces from rear to front axle
-    trainRef.current.lookAt(frontPos.clone().setY(centerPos.y + 0.5));
+    trainRef.current.lookAt(frontPos.clone().setY(centerPos.y + 0.2));
 
     // rotate wheels -- constant rate regardless of train speed
     const WHEEL_ROTATION_SPEED = 2.0; // radians per second -- tune to taste

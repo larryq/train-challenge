@@ -10,7 +10,7 @@ export const DAY_NIGHT_CONFIG = {
 
   // day values
   DAY_FOG_COLOR: "#c8a882",
-  DAY_FOG_DENSITY: 0.022,
+  DAY_FOG_DENSITY: 0.012,
   DAY_AMBIENT_COLOR: "#ffcc88",
   DAY_AMBIENT_INTENSITY: 0.4,
   DAY_SUN_COLOR: "#ffb347", //'#ff9944',
