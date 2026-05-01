@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Canvas } from "@react-three/fiber";
-import { Line } from "@react-three/drei";
+import { Line, useGLTF } from "@react-three/drei";
 import { Suspense, useRef, useState, useCallback, useEffect } from "react";
 import * as THREE from "three";
 import { ChunkManager } from "./components/track/ChunkManager";
@@ -29,9 +29,13 @@ import { Signals } from "./components/entities/Signals";
 import { IntroScreen } from "./components/hud/IntroScreen";
 import { useDayNight } from "./hooks/useDayNight";
 import { Terrain2 } from "./components/environment/Terrain2";
-import { Terrain3 } from "./components/environment/Terrain3";
+//import { Terrain3 } from "./components/environment/Terrain3";
 import { useTerrainCycle } from "./hooks/useTerrainCycle";
 import { Stats } from "@react-three/drei";
+import { GameTimer } from "./components/hud/GameTimer";
+import { SummaryScreen } from "./components/hud/SummaryScreen";
+import { useTexture } from "@react-three/drei";
+import { LEVEL_CONFIGS } from "./lib/levelConfig";
 
 // ---- Scene props ------------------------------------------
 
@@ -277,6 +281,8 @@ export default function App() {
 
       {/* DOM overlays -- outside Canvas */}
       <ScoreHUD />
+      <GameTimer />
+      <SummaryScreen />
       <BonusText />
       <DeliveredText />
       <PenaltyText />
@@ -288,3 +294,12 @@ export default function App() {
     </div>
   );
 }
+
+LEVEL_CONFIGS.forEach((config) => {
+  useTexture.preload(config.terrainTextures.map);
+  useTexture.preload(config.terrainTextures.normalMap);
+  useTexture.preload(config.terrainTextures.aoMap);
+});
+LEVEL_CONFIGS.forEach((config) => {
+  config.treeGlbs.forEach((url) => useGLTF.preload(url));
+});

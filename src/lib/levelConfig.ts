@@ -1,58 +1,87 @@
-import type { GrabTargetType } from "../stores/useEntityStore";
-
 export interface LevelConfig {
+  terrainColor: string;
   level: number;
   duration: number;
   trainSpeed: number;
-  grabTypes: GrabTargetType[];
-  spawnFrequency: number;
-  minSpawnDistance: number; // minimum meters between spawns
-  fogDensity: number;
+  label: string;
+  terrainTextures: {
+    map: string;
+    normalMap: string;
+    aoMap: string;
+  };
+  treeGlbs: [string, string, string];
+  treeWeights: [number, number, number];
+  aoStrength: number;
 }
 
-const DEFINED_LEVELS: LevelConfig[] = [
+export const LEVEL_CONFIGS: LevelConfig[] = [
   {
     level: 1,
     duration: 120,
-    trainSpeed: 5.5,
-    grabTypes: ["ruby"],
-    spawnFrequency: 1.0,
-    minSpawnDistance: 30,
-    fogDensity: 0.012,
+    trainSpeed: 6,
+    label: "Rocky Plains",
+    terrainTextures: {
+      map: "/textures/rocky_terrain_02_diff_1k.jpg",
+      normalMap: "/textures/rocky_terrain_02_nor_gl_1k.jpg",
+      aoMap: "/textures/rocky_terrain_02_ao_1k.jpg",
+    },
+    treeGlbs: ["/models/tree9.glb", "/models/tree2.glb", "/models/tree3.glb"],
+    treeWeights: [0.5, 0.35, 0.15],
+    aoStrength: 1.0,
+    terrainColor: "#ffffff",
   },
   {
     level: 2,
     duration: 120,
-    trainSpeed: 20,
-    grabTypes: ["ruby", "mailsack"],
-    spawnFrequency: 1.2,
-    minSpawnDistance: 25,
-    fogDensity: 0.012,
+    trainSpeed: 6,
+    label: "Grasslands",
+    terrainTextures: {
+      map: "/textures/Ground037_1K-JPG_Color.jpg",
+      normalMap: "/textures/Ground037_1K-JPG_NormalGL.jpg",
+      aoMap: "/textures/Ground037_1K-JPG_AmbientOcclusion.jpg",
+    },
+    treeGlbs: ["/models/tree3.glb", "/models/tree2.glb", "/models/tree4.glb"],
+    treeWeights: [0.5, 0.35, 0.15],
+    aoStrength: 0.7,
+    terrainColor: "#282828",
   },
   {
     level: 3,
     duration: 120,
-    trainSpeed: 23,
-    grabTypes: ["ruby", "mailsack", "sign"],
-    spawnFrequency: 1.4,
-    minSpawnDistance: 20,
-    fogDensity: 0.014,
+    trainSpeed: 6,
+    label: "Coastal",
+    terrainTextures: {
+      map: "/textures/coast_sand_rocks_02_diff_1k.jpg",
+      normalMap: "/textures/coast_sand_rocks_02_nor_gl_1k.jpg",
+      aoMap: "/textures/coast_sand_rocks_02_ao_1k.jpg",
+    },
+    treeGlbs: [
+      "/models/tree10.glb",
+      "/models/tree11.glb",
+      "/models/tree12.glb",
+    ],
+    treeWeights: [0.4, 0.4, 0.2],
+    aoStrength: 1.0,
+    terrainColor: "#ffffff",
+  },
+  {
+    level: 4,
+    duration: 120,
+    trainSpeed: 6,
+    label: "Winter Pass",
+    terrainTextures: {
+      map: "/textures/snow_field_aerial_col_1k.jpg",
+      normalMap: "/textures/snow_field_aerial_nor_gl_1k.jpg",
+      aoMap: "/textures/snow_field_aerial_ao_1k.jpg",
+    },
+    treeGlbs: ["/models/tree6.glb", "/models/tree7.glb", "/models/tree8.glb"],
+    treeWeights: [0.4, 0.4, 0.2],
+    aoStrength: 1.0,
+    terrainColor: "#ffffff",
   },
 ];
 
 export function getLevelConfig(level: number): LevelConfig {
-  if (level <= DEFINED_LEVELS.length) {
-    return DEFINED_LEVELS[level - 1];
-  }
-
-  const base = DEFINED_LEVELS[DEFINED_LEVELS.length - 1];
-  const excess = level - DEFINED_LEVELS.length;
-
-  return {
-    ...base,
-    level,
-    trainSpeed: Math.min(base.trainSpeed + excess * 0.005, 0.15),
-    spawnFrequency: Math.min(base.spawnFrequency + excess * 0.1, 3.0),
-    minSpawnDistance: Math.max(base.minSpawnDistance - excess * 1, 10),
-  };
+  const index = (level - 1) % LEVEL_CONFIGS.length;
+  return LEVEL_CONFIGS[index];
 }

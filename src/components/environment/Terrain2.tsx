@@ -1,8 +1,10 @@
 /* eslint-disable react-hooks/immutability */
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
+import { useGameStore } from "../../stores/useGameStore";
+import { getLevelConfig } from "../../lib/levelConfig";
 
 interface Terrain2Props {
   trainPositionRef: React.MutableRefObject<THREE.Vector3>;
@@ -17,6 +19,8 @@ export function Terrain2({ trainPositionRef }: Terrain2Props) {
 
   const lastPosRef = useRef(new THREE.Vector3());
   const { gl } = useThree();
+  const currentLevel = useGameStore((s) => s.currentLevel);
+  const config = getLevelConfig(currentLevel);
 
   // load all three texture maps
   // const [colorMap, normalMap, aoMap] = useTexture([
@@ -31,11 +35,31 @@ export function Terrain2({ trainPositionRef }: Terrain2Props) {
   //   "/textures/Ground037_1K-JPG_AmbientOcclusion.jpg",
   // ]);
 
+  // const [colorMap, normalMap, aoMap] = useTexture([
+  //   "/textures/coast_sand_rocks_02_diff_1k.jpg",
+  //   "/textures/coast_sand_rocks_02_nor_gl_1k.jpg",
+  //   "/textures/coast_sand_rocks_02_ao_1k.jpg",
+  // ]);
+
   const [colorMap, normalMap, aoMap] = useTexture([
-    "/textures/coast_sand_rocks_02_diff_1k.jpg",
-    "/textures/coast_sand_rocks_02_nor_gl_1k.jpg",
-    "/textures/coast_sand_rocks_02_ao_1k.jpg",
+    config.terrainTextures.map,
+    config.terrainTextures.normalMap,
+    config.terrainTextures.aoMap,
   ]);
+
+  useEffect(() => {
+    if (!matRef.current) return;
+
+    matRef.current.map = colorMap;
+    matRef.current.normalMap = normalMap;
+    matRef.current.aoMap = aoMap;
+
+    matRef.current.map.needsUpdate = true;
+    matRef.current.normalMap.needsUpdate = true;
+    matRef.current.aoMap.needsUpdate = true;
+
+    matRef.current.needsUpdate = true;
+  }, [colorMap, normalMap, aoMap]);
 
   // configure all maps identically
   useMemo(() => {
@@ -134,7 +158,7 @@ export function Terrain2({ trainPositionRef }: Terrain2Props) {
         normalMap={normalMap}
         normalScale={new THREE.Vector2(1, 1)}
         aoMap={aoMap}
-        aoMapIntensity={1.0}
+        aoMapIntensity={config.aoStrength}
         roughness={0.8}
         metalness={0.0}
         polygonOffset={true}

@@ -71,7 +71,7 @@ export function Signal({ signal /*trainPositionRef*/ }: SignalProps) {
       </mesh>
 
       {/* arm placeholder */}
-      {!signal.isGreen && (
+      {/* {!signal.isGreen && (
         <mesh
           position={[signal.side === "right" ? -1.5 : 1.5, 2.8, 0]}
           rotation={[0, 0, Math.PI / 2]}
@@ -79,7 +79,7 @@ export function Signal({ signal /*trainPositionRef*/ }: SignalProps) {
           <cylinderGeometry args={[0.05, 0.05, 3, 6]} />
           <meshLambertMaterial color="#cc4400" />
         </mesh>
-      )}
+      )} */}
     </group>
   );
 }

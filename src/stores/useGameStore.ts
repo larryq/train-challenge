@@ -1,105 +1,122 @@
 import { create } from "zustand";
-import { subscribeWithSelector } from "zustand/middleware";
-
-type GamePhase = "menu" | "playing" | "summary" | "gameover";
+import { getLevelConfig } from "../lib/levelConfig";
 
 interface GameStore {
-  phase: GamePhase;
+  phase: "menu" | "playing" | "summary";
   currentLevel: number;
   sessionScore: number;
   levelScore: number;
-  multiplier: number;
-  consecutiveGrabs: number;
-  levelTimeRemaining: number;
-  levelGrabs: number;
-  levelGrabsAttempted: number;
-  sessionGrabs: number;
-  score: number;
 
-  setPhase: (phase: GamePhase) => void;
-  tickTimer: (delta: number) => void;
-  addScore: (points: number) => void;
-  deductScore: (amount: number) => void;
-  incrementStreak: () => void;
-  resetStreak: () => void;
-  completeLevel: () => void;
-  startNextLevel: () => void;
+  // timer
+  timeRemaining: number;
+
+  // level stats -- grabbed
+  levelRubies: number;
+  levelMailbags: number;
+  levelSignals: number;
+
+  // level stats -- total spawned
+  totalRubies: number;
+  totalMailbags: number;
+  totalSignals: number;
+
+  // actions
   startGame: () => void;
+  endLevel: () => void;
+  startNextLevel: () => void;
+  tickTimer: () => void;
+
+  // score
+  addScore: (amount: number) => void;
+  deductScore: (amount: number) => void;
+
+  // grabbed counters
+  incrementLevelRubies: () => void;
+  incrementLevelMailbags: () => void;
+  incrementLevelSignals: () => void;
+
+  // spawned counters
+  incrementTotalRubies: () => void;
+  incrementTotalMailbags: () => void;
+  incrementTotalSignals: () => void;
 }
 
-export const useGameStore = create<GameStore>()(
-  subscribeWithSelector((set) => ({
-    phase: "menu",
-    currentLevel: 1,
-    sessionScore: 0,
-    levelScore: 0,
-    multiplier: 1,
-    consecutiveGrabs: 0,
-    levelTimeRemaining: 120,
-    levelGrabs: 0,
-    levelGrabsAttempted: 0,
-    sessionGrabs: 0,
-    score: 0,
+export const useGameStore = create<GameStore>((set, get) => ({
+  phase: "menu",
+  currentLevel: 1,
+  sessionScore: 0,
+  levelScore: 0,
+  timeRemaining: getLevelConfig(1).duration,
 
-    setPhase: (phase) => set({ phase }),
+  levelRubies: 0,
+  levelMailbags: 0,
+  levelSignals: 0,
+  totalRubies: 0,
+  totalMailbags: 0,
+  totalSignals: 0,
 
-    tickTimer: (delta) =>
-      set((state) => {
-        if (state.phase !== "playing") return {};
-        const remaining = state.levelTimeRemaining - delta;
-        if (remaining <= 0) {
-          return { levelTimeRemaining: 0, phase: "summary" };
-        }
-        return { levelTimeRemaining: remaining };
-      }),
+  startGame: () =>
+    set({
+      phase: "playing",
+      currentLevel: 1,
+      sessionScore: 0,
+      levelScore: 0,
+      timeRemaining: getLevelConfig(1).duration,
+      levelRubies: 0,
+      levelMailbags: 0,
+      levelSignals: 0,
+      totalRubies: 0,
+      totalMailbags: 0,
+      totalSignals: 0,
+    }),
 
-    addScore: (points) =>
-      set((state) => ({
-        levelScore: state.levelScore + points * state.multiplier,
-        sessionScore: state.sessionScore + points * state.multiplier,
-        score: state.score + points * state.multiplier,
-      })),
-    // in the store interface
+  endLevel: () => set({ phase: "summary" }),
 
-    // in the store implementation
-    deductScore: (amount) =>
-      set((state) => ({
-        score: Math.max(0, state.score - amount),
-        levelScore: Math.max(0, state.levelScore - amount),
-      })),
+  startNextLevel: () => {
+    const current = get().currentLevel;
+    const nextLevel = current >= 4 ? 1 : current + 1;
+    const config = getLevelConfig(nextLevel);
+    set({
+      phase: "playing",
+      currentLevel: nextLevel,
+      levelScore: 0,
+      timeRemaining: config.duration,
+      levelRubies: 0,
+      levelMailbags: 0,
+      levelSignals: 0,
+      totalRubies: 0,
+      totalMailbags: 0,
+      totalSignals: 0,
+    });
+  },
 
-    incrementStreak: () =>
-      set((state) => ({
-        consecutiveGrabs: state.consecutiveGrabs + 1,
-        multiplier: Math.min(state.consecutiveGrabs + 1, 4),
-        levelGrabs: state.levelGrabs + 1,
-        sessionGrabs: state.sessionGrabs + 1,
-      })),
+  tickTimer: () => {
+    const t = get().timeRemaining;
+    if (t <= 0) return;
+    set({ timeRemaining: t - 1 });
+  },
 
-    resetStreak: () =>
-      set({
-        consecutiveGrabs: 0,
-        multiplier: 1,
-      }),
+  addScore: (amount) =>
+    set((state) => ({
+      sessionScore: state.sessionScore + amount,
+      levelScore: state.levelScore + amount,
+    })),
 
-    completeLevel: () =>
-      set((state) => ({
-        phase: "summary",
-        sessionScore: state.sessionScore + state.levelScore,
-      })),
+  deductScore: (amount) =>
+    set((state) => ({
+      sessionScore: Math.max(0, state.sessionScore - amount),
+      levelScore: Math.max(0, state.levelScore - amount),
+    })),
 
-    startGame: () => set({ phase: "playing" }),
+  incrementLevelRubies: () => set((s) => ({ levelRubies: s.levelRubies + 1 })),
+  incrementLevelMailbags: () =>
+    set((s) => ({ levelMailbags: s.levelMailbags + 1 })),
+  incrementLevelSignals: () =>
+    set((s) => ({ levelSignals: s.levelSignals + 1 })),
 
-    startNextLevel: () =>
-      set((state) => ({
-        phase: "playing",
-        currentLevel: state.currentLevel + 1,
-        levelScore: 0,
-        levelGrabs: 0,
-        levelGrabsAttempted: 0,
-        levelTimeRemaining: 120,
-        multiplier: 1,
-        consecutiveGrabs: 0,
-      })),
-  })),
-);
+  incrementTotalRubies: () => set((s) => ({ totalRubies: s.totalRubies + 1 })),
+  incrementTotalMailbags: () =>
+    set((s) => ({ totalMailbags: s.totalMailbags + 1 })),
+  incrementTotalSignals: () =>
+    set((s) => ({ totalSignals: s.totalSignals + 1 })),
+}));

@@ -25,12 +25,15 @@ export function GrabSystem({
   const setLastGrabbed = useEntityStore((s) => s.setLastGrabbed);
   const setBonusText = useEntityStore((s) => s.setBonusText);
   const addScore = useGameStore((s) => s.addScore);
-  const incrementStreak = useGameStore((s) => s.incrementStreak);
+  //const incrementStreak = useGameStore((s) => s.incrementStreak);
   const grabMailbag = useEntityStore((s) => s.grabMailbag);
   const mailbags = useEntityStore((s) => s.mailbags);
   const setDeliveredText = useEntityStore((s) => s.setDeliveredText);
   const signals = useEntityStore((s) => s.signals);
   const setSignalGreen = useEntityStore((s) => s.setSignalGreen);
+  const incrementLevelRubies = useGameStore((s) => s.incrementLevelRubies);
+  const incrementLevelMailbags = useGameStore((s) => s.incrementLevelMailbags);
+  const incrementLevelSignals = useGameStore((s) => s.incrementLevelSignals);
 
   // track mouse screen position for CrosshairVisual
   useEffect(() => {
@@ -94,8 +97,9 @@ export function GrabSystem({
       if (cluster.rubiesGrabbed[rubyIndex]) return;
 
       grabRuby(clusterId, rubyIndex);
+      incrementLevelRubies();
       addScore(GRAB_CONFIG.RUBY_POINTS);
-      incrementStreak();
+      //incrementStreak();
 
       setLastGrabbed(clusterId);
       setTimeout(() => setLastGrabbed(null), 100);
@@ -118,9 +122,10 @@ export function GrabSystem({
       rubyClusters,
       grabRuby,
       addScore,
-      incrementStreak,
+      //incrementStreak,
       setLastGrabbed,
       setBonusText,
+      incrementLevelRubies,
     ],
   );
 
@@ -133,8 +138,9 @@ export function GrabSystem({
       if (!bag || bag.isExpired || bag.isGrabbed) return;
 
       grabMailbag(mailbagId);
+      incrementLevelMailbags();
       addScore(GRAB_CONFIG.MAILBAG_POINTS);
-      incrementStreak();
+      // incrementStreak();
 
       // show delivered text
       setDeliveredText({
@@ -148,7 +154,14 @@ export function GrabSystem({
 
       console.log(`Grabbed mailbag ${mailbagId}`);
     },
-    [mailbags, grabMailbag, addScore, incrementStreak, setDeliveredText],
+    [
+      mailbags,
+      grabMailbag,
+      addScore,
+      // incrementStreak,
+      setDeliveredText,
+      incrementLevelMailbags,
+    ],
   );
 
   const handleSignalGrab = useCallback(
@@ -165,9 +178,10 @@ export function GrabSystem({
       if (dist > GRAB_CONFIG.SIGNAL_GRAB_DISTANCE) return;
 
       setSignalGreen(signalId);
+      incrementLevelSignals();
       console.log(`Signal ${signalId} turned green`);
     },
-    [signals, setSignalGreen, trainPositionRef],
+    [signals, setSignalGreen, trainPositionRef, incrementLevelSignals],
   );
 
   const handleClick = useCallback(() => {

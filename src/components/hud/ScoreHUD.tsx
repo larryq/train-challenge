@@ -2,8 +2,16 @@ import { useGameStore } from "../../stores/useGameStore";
 
 export function ScoreHUD() {
   const score = useGameStore((s) => s.levelScore);
-  const multiplier = useGameStore((s) => s.multiplier);
+  //const multiplier = useGameStore((s) => s.multiplier);
   const phase = useGameStore((s) => s.phase);
+
+  const timeRemaining = useGameStore((s) => s.timeRemaining);
+  const currentLevel = useGameStore((s) => s.currentLevel);
+
+  const minutes = Math.floor(timeRemaining / 60);
+  const seconds = timeRemaining % 60;
+  const timeStr = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  const isLow = timeRemaining < 30;
 
   if (phase === "menu") return null;
 
@@ -12,7 +20,7 @@ export function ScoreHUD() {
       style={{
         position: "absolute",
         top: 20,
-        right: 20,
+        right: 30,
         color: "white",
         fontFamily: "monospace",
         fontSize: 24,
@@ -25,17 +33,39 @@ export function ScoreHUD() {
       <div style={{ fontSize: 36, fontWeight: "bold" }}>
         {score.toString().padStart(3, "0")}
       </div>
-      {multiplier > 1 && (
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          gap: "14px",
+        }}
+      >
         <div
           style={{
-            color: "#ffdd44",
-            fontSize: 16,
-            marginTop: 4,
+            color: "#f5e6c8",
+            fontSize: 18,
+            fontFamily: "Rye, serif",
+            opacity: 0.7,
           }}
         >
-          {multiplier}x MULTIPLIER
+          Level {currentLevel}
         </div>
-      )}
+
+        <div
+          style={{
+            color: isLow ? "#ff4444" : "#110598",
+            fontSize: 36,
+            fontFamily: "monospace",
+            fontWeight: "bold",
+            textShadow: isLow ? "0 0 10px #ff0000" : "none",
+            transition: "color 0.5s, text-shadow 0.5s",
+          }}
+        >
+          {timeStr}
+        </div>
+      </div>
     </div>
   );
 }

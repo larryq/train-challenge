@@ -48,6 +48,9 @@ export function SpawnManager({
   const currentSpeed = usePlayerStore((s) => s.currentSpeed);
   const phase = useGameStore((s) => s.phase);
   const isReady = useTrackStore((s) => s.isReady);
+  const incrementTotalRubies = useGameStore((s) => s.incrementTotalRubies);
+  const incrementTotalMailbags = useGameStore((s) => s.incrementTotalMailbags);
+  const incrementTotalSignals = useGameStore((s) => s.incrementTotalSignals);
 
   // ruby store
   const spawnRubyCluster = useEntityStore((s) => s.spawnRubyCluster);
@@ -112,9 +115,10 @@ export function SpawnManager({
       rubiesGrabbed: [false, false, false] as [boolean, boolean, boolean],
       isExpired: false,
     });
+    incrementTotalRubies();
 
     console.log("SpawnManager: spawned ruby cluster at", position);
-  }, [masterCurveRef, trainTRef, spawnRubyCluster]);
+  }, [masterCurveRef, trainTRef, spawnRubyCluster, incrementTotalRubies]);
 
   const spawnBag = useCallback(() => {
     const curve = masterCurveRef.current;
@@ -138,9 +142,10 @@ export function SpawnManager({
       isGrabbed: false,
       isExpired: false,
     });
+    incrementTotalMailbags();
 
     console.log("SpawnManager: spawned mailbag at", position);
-  }, [masterCurveRef, trainTRef, spawnMailbag]);
+  }, [masterCurveRef, trainTRef, spawnMailbag, incrementTotalMailbags]);
 
   const spawnSignalAtPoint = useCallback(
     (worldPoints: THREE.Vector3[], _segmentUrls: string[]) => {
@@ -174,8 +179,9 @@ export function SpawnManager({
         isExpired: false,
         isPenalized: false,
       });
+      incrementTotalSignals();
     },
-    [masterCurveRef, spawnSignal],
+    [masterCurveRef, spawnSignal, incrementTotalSignals],
   );
 
   useFrame(() => {
