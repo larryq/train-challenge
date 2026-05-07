@@ -51,6 +51,16 @@ interface Chunk {
   treeInstances: TreeInstance[];
 }
 
+// registered hill entry -- persists across chunk lifetimes
+interface ActiveHill {
+  chunkId: number;
+  position: THREE.Vector3; // world XZ center of hill
+  radius: number;
+  mesh: THREE.Mesh;
+  baseY: number; // original mesh.position.y (buried offset)
+  demolitionStartTime: number | null; // null = healthy
+}
+
 export interface ChunkManagerProps {
   loadedSegments: Map<string, LoadedSegment>;
   trainPositionRef: React.MutableRefObject<THREE.Vector3>;
@@ -69,11 +79,23 @@ export interface ChunkGrassData {
 // ---- constants --------------------------------------------
 
 const CHUNK_TRIGGER_DISTANCE = 55; // build next chunk when train is this close to end
-//const MASTER_CURVE_SAMPLES = 200; // resolution for findClosestT
-// hill spawn animation settings
-// set to 0 to disable either effect
+
+// hill spawn animation settings -- set to 0 to disable either effect
 const HILL_FADE_DURATION = 2000; // ms to fade from transparent to opaque
 const HILL_GROW_DURATION = 1500; // ms to grow from flat to full height
+
+// ---- hill demolition constants ----------------------------
+// set DEBUG_DEMOLISH_HILLS=true and press Shift+H to test the animation
+
+const DEBUG_DEMOLISH_HILLS = true;
+
+const HILL_DEMOLISH_WOBBLE_DURATION = 2000; // ms of wobbling before sinking
+const HILL_DEMOLISH_WOBBLE_SPEED = 38.0; // radians/sec of wobble oscillation
+const HILL_DEMOLISH_WOBBLE_AMOUNT = 0.05; // max rotation in radians (~14 degrees)
+const HILL_DEMOLISH_SINK_DURATION = 1200; // ms to sink underground and fade out
+const HILL_DEMOLISH_SINK_DEPTH = 1.2; // multiplier of radius -- how far it sinks
+const HILL_DEMOLISH_SINK_OVERLAP = 400; //start sinking before the wobble stops
+const HILL_DEMOLISH_TRACK_BUFFER = 2; // extra clearance beyond hill radius for detection
 
 // ---- helpers ----------------------------------------------
 
@@ -123,6 +145,7 @@ function buildMasterCurve(chunks: Chunk[]): THREE.CatmullRomCurve3 {
   return curve;
 }
 
+// returns the built chunk AND the hill entries to register
 function buildChunk(
   id: number,
   segmentUrls: string[],
@@ -142,7 +165,7 @@ function buildChunk(
     normalMap: THREE.Texture;
     aoMap: THREE.Texture;
   }>,
-): Chunk {
+): { chunk: Chunk; hillEntries: ActiveHill[] } {
   const group = new THREE.Group();
   group.name = `Chunk_${id}`;
   threeScene.add(group);
@@ -230,16 +253,6 @@ function buildChunk(
   // step 2 -- register this chunk's own track corridor
   registerTrackCorridor(worldPoints, 20, exclusionZones);
 
-  // step 3 -- place stations (after track, before hills)
-  // const stationConfigs = placeStations(id, worldPoints, exclusionZones)
-  // stationConfigs.forEach(s => {
-  //   exclusionZones.push({
-  //     position: s.position.clone(),
-  //     radius: 25,
-  //     type: 'station',
-  //   })
-  // })
-
   //DEBUG BELOW-- UNCOMMENT TO HELP CAUSE HILLS TO INTERSECT TRACK
   //exclusionZones.length = 0;
 
@@ -269,33 +282,6 @@ function buildChunk(
   });
 
   const hillMeshes: THREE.Mesh[] = [];
-  // sphericalHillConfigs.forEach((config) => {
-  //   const geo = generateSphericalHillGeometry(
-  //     config.radius,
-  //     config.seed,
-  //     4, // 4 outcropping centers per hill
-  //   );
-
-  //   const mesh = new THREE.Mesh(geo, sphericalHillMaterial.clone());
-  //   mesh.name = "NearbyHill"; // same name -- reuses existing fade/grow animation
-
-  //   // bury 55% underground
-  //   mesh.position.copy(config.position);
-  //   mesh.position.y = -config.radius * 0.55;
-
-  //   mesh.userData.spawnTime = Date.now();
-
-  //   if (HILL_GROW_DURATION > 0) {
-  //     mesh.scale.y = 0.001;
-  //   }
-
-  //   group.add(mesh);
-
-  //   //variable below used for track / hill intersection detection
-  //   hillMeshes.push(mesh);
-  // });
-
-  ///TESTING
 
   const materialTexture = new THREE.MeshStandardMaterial({
     map: hillTextures.map,
@@ -312,12 +298,6 @@ function buildChunk(
   hillTextures.normalMap.needsUpdate = true;
   hillTextures.aoMap.needsUpdate = true;
   hillTextures.displacementMap.needsUpdate = true;
-
-  // const materialTexture = new THREE.MeshStandardMaterial({
-  //   color: "#ff0000", // bright red
-  //   vertexColors: false,
-  //   fog: false,
-  // });
 
   sphericalHillConfigs.forEach((config) => {
     const geo = generateTexturedSphericalHillGeometry(
@@ -339,6 +319,9 @@ function buildChunk(
       side: THREE.DoubleSide,
       vertexColors: Math.random() > 0.99999,
       fog: false,
+      // transparent must be true from birth so demolition fade works immediately
+      transparent: true,
+      opacity: HILL_FADE_DURATION > 0 ? 0 : 1,
     });
 
     const mesh = new THREE.Mesh(geo, mat);
@@ -355,12 +338,8 @@ function buildChunk(
     }
 
     group.add(mesh);
-
-    //variable below used for track / hill intersection detection
     hillMeshes.push(mesh);
   });
-
-  //END TEST
 
   // process tunnels -- carve geometry where track intersects hills
   processTunnels(worldPoints, sphericalHillConfigs, hillMeshes);
@@ -391,49 +370,6 @@ function buildChunk(
     transparent: false,
     opacity: 1,
   });
-
-  // lakes.forEach((config) => {
-  //   const shoreGeo = createShoreGeometry(
-  //     config.radius,
-  //     LANDMARK_CONFIG.LAKE_SHORE_WIDTH,
-  //     config.seed,
-  //   );
-  //   const shoreMesh = new THREE.Mesh(
-  //     shoreGeo,
-  //     new THREE.MeshLambertMaterial({
-  //       color: "#ba894a",
-  //       side: THREE.DoubleSide,
-  //     }),
-  //   );
-  //   shoreMesh.position.copy(config.position);
-  //   shoreMesh.position.y = 0.05;
-  //   shoreMesh.name = "LakeShore"; // ← add this
-  //   shoreMesh.userData.spawnTime = Date.now();
-  //   shoreMesh.userData.fadeDuration = LANDMARK_CONFIG.LAKE_FADE_DURATION;
-  //   shoreMesh.userData.growDuration = LANDMARK_CONFIG.LAKE_GROW_DURATION;
-  //   shoreMesh.userData.targetOpacity = 1.0;
-  //   shoreMesh.scale.set(0.001, 1, 0.001);
-  //   group.add(shoreMesh);
-
-  //   const waterGeo = createLakeGeometry(config.radius, config.seed);
-  //   const waterMesh = new THREE.Mesh(
-  //     waterGeo,
-  //     new THREE.MeshLambertMaterial({
-  //       color: "#4a9aba",
-  //       side: THREE.DoubleSide,
-  //       transparent: true,
-  //     }),
-  //   );
-  //   waterMesh.position.copy(config.position);
-  //   waterMesh.position.y = 0.1;
-  //   waterMesh.name = "LakeWater"; // ← add this
-  //   waterMesh.userData.spawnTime = Date.now();
-  //   waterMesh.userData.fadeDuration = LANDMARK_CONFIG.LAKE_FADE_DURATION;
-  //   waterMesh.userData.growDuration = LANDMARK_CONFIG.LAKE_GROW_DURATION;
-  //   waterMesh.userData.targetOpacity = LANDMARK_CONFIG.LAKE_OPACITY;
-  //   waterMesh.scale.set(0.001, 1, 0.001);
-  //   group.add(waterMesh);
-  // });
 
   lakes.forEach((config) => {
     const spawnTime = Date.now();
@@ -499,7 +435,17 @@ function buildChunk(
     group.add(fieldMesh);
   });
 
-  return {
+  // build hill registry entries for this chunk
+  const hillEntries: ActiveHill[] = sphericalHillConfigs.map((config, i) => ({
+    chunkId: id,
+    position: config.position.clone(), // XZ center in world space
+    radius: config.radius,
+    mesh: hillMeshes[i],
+    baseY: -config.radius * 0.55, // same as mesh.position.y set above
+    demolitionStartTime: null,
+  }));
+
+  const chunk: Chunk = {
     id,
     group,
     worldPoints,
@@ -508,6 +454,8 @@ function buildChunk(
     grassInstances,
     treeInstances,
   };
+
+  return { chunk, hillEntries };
 }
 
 function disposeChunk(chunk: Chunk, threeScene: THREE.Scene): void {
@@ -551,6 +499,9 @@ export function ChunkManager({
   const isReadyRef = useRef(false);
   const pendingBuildRef = useRef(false);
   const removedArcLengthRef = useRef(0);
+
+  // persistent registry of all hills across all active chunks
+  const activeHillsRef = useRef<ActiveHill[]>([]);
 
   const rebuildMasterCurve2 = useCallback(() => {
     if (chunksRef.current.length === 0) return;
@@ -691,7 +642,29 @@ export function ChunkManager({
     });
   });
 
-  // build one chunk and append it
+  // ---- debug key: Shift+H demolishes all active hills -------
+  useEffect(() => {
+    if (!DEBUG_DEMOLISH_HILLS) return;
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.shiftKey && e.key === "H") {
+        const now = Date.now();
+        let count = 0;
+        activeHillsRef.current.forEach((hill) => {
+          if (hill.demolitionStartTime === null) {
+            hill.demolitionStartTime = now;
+            count++;
+          }
+        });
+        console.log(`DEBUG: triggered demolition on ${count} hills (Shift+H)`);
+      }
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
+
+  // ---- build one chunk and append it ------------------------
   const buildNextChunk = useCallback(() => {
     if (isBuildingRef.current) return;
     isBuildingRef.current = true;
@@ -718,19 +691,48 @@ export function ChunkManager({
         existingSplinePoints.push(...chunk.worldPoints);
       });
 
-      const chunk = buildChunk(
+      const { chunk, hillEntries } = buildChunk(
         chunkIdCounter.current++,
         urls,
         loadedSegments,
         prevEndPos,
         prevEndDir,
         scene,
-        existingSplinePoints, // pass existing points
+        existingSplinePoints,
         hillTexturesRef.current,
         hillTextureSetsRef.current,
       );
 
       chunksRef.current.push(chunk);
+
+      // register this chunk's hills in the persistent registry
+      activeHillsRef.current.push(...hillEntries);
+
+      // ---- check new track against ALL existing hills -------
+      // new chunk's track may curve into a hill from a prior chunk
+      const now = Date.now();
+      activeHillsRef.current.forEach((hill) => {
+        // skip hills from THIS chunk (they were just placed safely)
+        // and skip hills already being demolished
+        if (hill.chunkId === chunk.id) return;
+        if (hill.demolitionStartTime !== null) return;
+
+        const tooClose = chunk.worldPoints.some((wp) => {
+          const dx = wp.x - hill.position.x;
+          const dz = wp.z - hill.position.z;
+          return (
+            Math.sqrt(dx * dx + dz * dz) <
+            hill.radius + HILL_DEMOLISH_TRACK_BUFFER
+          );
+        });
+
+        if (tooClose) {
+          hill.demolitionStartTime = now;
+          console.log(
+            `ChunkManager: new track (chunk ${chunk.id}) collides with hill in chunk ${hill.chunkId} -- demolishing`,
+          );
+        }
+      });
 
       const lastUrl = urls[urls.length - 1];
       lastEndTagsRef.current = segmentLibrary.find((s) => s.url === lastUrl)
@@ -752,13 +754,12 @@ export function ChunkManager({
     loadedSegments,
   ]);
 
-  // despawn oldest chunk
+  // ---- despawn oldest chunk ---------------------------------
   const despawnOldestChunk = useCallback(() => {
     const oldest = chunksRef.current.shift();
     if (!oldest) return;
 
     // record arc length being removed from start of curve
-    // rebuildMasterCurve uses this to correctly remap train t
     const removedCurve = new THREE.CatmullRomCurve3(
       oldest.worldPoints,
       false,
@@ -769,6 +770,12 @@ export function ChunkManager({
     removedArcLengthRef.current += removedCurve.getLength();
 
     disposeChunk(oldest, scene);
+
+    // remove this chunk's hills from the registry
+    // (meshes are already disposed by disposeChunk above)
+    activeHillsRef.current = activeHillsRef.current.filter(
+      (h) => h.chunkId !== oldest.id,
+    );
 
     rebuildMasterCurve();
 
@@ -800,12 +807,11 @@ export function ChunkManager({
     return () => {
       console.log("CLEANUP: removing", chunksRef.current.length, "chunks");
       clearTimeout(timeout);
-      // clean up any chunks built during this mount
-      // prevents duplicate chunks on React strict mode remount
       chunksRef.current.forEach((chunk) => {
         disposeChunk(chunk, scene);
       });
       chunksRef.current = [];
+      activeHillsRef.current = [];
       chunkIdCounter.current = 0;
       isReadyRef.current = false;
       removedArcLengthRef.current = 0;
@@ -815,9 +821,10 @@ export function ChunkManager({
   }, [buildNextChunk, chunksToPreload, setReady]);
 
   useFrame(() => {
-    if (HILL_FADE_DURATION > 0 || HILL_GROW_DURATION > 0) {
-      const now = Date.now();
+    const now = Date.now();
 
+    // ---- existing hill spawn animations (fade in + grow) ----
+    if (HILL_FADE_DURATION > 0 || HILL_GROW_DURATION > 0) {
       chunksRef.current.forEach((chunk) => {
         chunk.group.traverse((obj) => {
           if (
@@ -829,10 +836,10 @@ export function ChunkManager({
             return;
 
           const mesh = obj as THREE.Mesh;
-          const mat = mesh.material as
-            | THREE.MeshLambertMaterial
-            | THREE.MeshPhongMaterial;
           const elapsed = now - (mesh.userData.spawnTime ?? now);
+
+          // skip hills mid-demolition -- demolition loop drives them instead
+          if (mesh.userData.demolishing) return;
 
           // grow animation -- XZ scale for lakes, Y scale for hills
           const growDuration = mesh.userData.growDuration ?? HILL_GROW_DURATION;
@@ -842,13 +849,10 @@ export function ChunkManager({
             const s = 1 - Math.pow(1 - t, 3); // cubic ease out
 
             if (mesh.name === "LakeWater" || mesh.name === "LakeShore") {
-              // lakes grow outward on XZ
               mesh.scale.set(s, 1, s);
             } else if (mesh.name === "NearbyHill") {
-              // hills grow upward on Y
               mesh.scale.y = s;
             }
-            // fields don't grow
           }
 
           // fade animation
@@ -858,12 +862,10 @@ export function ChunkManager({
           const currentOpacity = t * targetOpacity;
 
           if (mesh.name === "LakeWater") {
-            // shader material -- write to uniform and update time
             const shaderMat = mesh.material as THREE.ShaderMaterial;
             shaderMat.uniforms.uOpacity.value = currentOpacity;
-            shaderMat.uniforms.uTime.value = Date.now() * 0.001;
+            shaderMat.uniforms.uTime.value = now * 0.001;
           } else {
-            // standard material -- write to opacity
             const stdMat = mesh.material as
               | THREE.MeshLambertMaterial
               | THREE.MeshPhongMaterial;
@@ -873,7 +875,7 @@ export function ChunkManager({
             }
           }
 
-          //darken hills at night
+          // darken hills at night
           if (obj.name === "NearbyHill") {
             const mat = mesh.material as THREE.MeshStandardMaterial;
             if (mat.aoMap) {
@@ -883,6 +885,86 @@ export function ChunkManager({
           }
         });
       });
+    }
+
+    // ---- hill demolition animation --------------------------
+    // iterate backwards so we can splice completed entries
+    for (let i = activeHillsRef.current.length - 1; i >= 0; i--) {
+      const hill = activeHillsRef.current[i];
+      if (hill.demolitionStartTime === null) continue;
+
+      const mesh = hill.mesh;
+      if (!mesh.parent) {
+        // mesh was already removed from scene (chunk despawned) -- clean up entry
+        activeHillsRef.current.splice(i, 1);
+        continue;
+      }
+
+      // flag so spawn animation loop skips this mesh
+      mesh.userData.demolishing = true;
+
+      const elapsed = now - hill.demolitionStartTime;
+
+      if (elapsed < HILL_DEMOLISH_WOBBLE_DURATION) {
+        // ---- phase 1: wobble --------------------------------
+        // sine wave on Y rotation, decaying amplitude toward end
+        const wobbleT = elapsed / HILL_DEMOLISH_WOBBLE_DURATION;
+        // amplitude stays full for first 70% then eases out
+        const amplitude =
+          wobbleT < 0.7
+            ? HILL_DEMOLISH_WOBBLE_AMOUNT
+            : HILL_DEMOLISH_WOBBLE_AMOUNT * (1 - (wobbleT - 0.7) / 0.3);
+
+        mesh.rotation.z =
+          Math.sin(elapsed * 0.001 * HILL_DEMOLISH_WOBBLE_SPEED) * amplitude;
+        mesh.rotation.x =
+          Math.sin(elapsed * 0.001 * HILL_DEMOLISH_WOBBLE_SPEED * 0.7) *
+          amplitude *
+          0.6;
+      }
+      if (
+        elapsed >=
+        HILL_DEMOLISH_WOBBLE_DURATION - HILL_DEMOLISH_SINK_OVERLAP
+      ) {
+        // ---- phase 2: sink + fade ---------------------------
+        const sinkElapsed =
+          elapsed -
+          (HILL_DEMOLISH_WOBBLE_DURATION - HILL_DEMOLISH_SINK_OVERLAP);
+        const sinkT = Math.min(sinkElapsed / HILL_DEMOLISH_SINK_DURATION, 1);
+
+        // cubic ease in -- starts slow, accelerates underground
+        const easedT = sinkT * sinkT * sinkT;
+
+        // sink downward from baseY
+        const sinkAmount = hill.radius * HILL_DEMOLISH_SINK_DEPTH;
+        mesh.position.y = hill.baseY - easedT * sinkAmount;
+
+        // reset Y rotation -- done wobbling
+        mesh.rotation.y = 0;
+
+        // fade out opacity
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        mat.opacity = Math.max(0, 1 - sinkT);
+        mat.needsUpdate = true;
+
+        if (sinkT >= 1) {
+          // ---- fully sunk -- remove from scene and registry -
+          if (mesh.parent) {
+            mesh.parent.remove(mesh);
+          }
+          mesh.geometry.dispose();
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach((m) => m.dispose());
+          } else {
+            (mesh.material as THREE.Material).dispose();
+          }
+
+          activeHillsRef.current.splice(i, 1);
+          console.log(
+            `ChunkManager: hill in chunk ${hill.chunkId} fully demolished`,
+          );
+        }
+      }
     }
 
     if (!isReadyRef.current) return;

@@ -74,7 +74,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   startNextLevel: () => {
     const current = get().currentLevel;
-    const nextLevel = current >= 4 ? 1 : current + 1;
+    const nextLevel = current >= 6 ? 1 : current + 1;
     const config = getLevelConfig(nextLevel);
     set({
       phase: "playing",

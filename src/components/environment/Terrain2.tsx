@@ -164,6 +164,7 @@ export function Terrain2({ trainPositionRef }: Terrain2Props) {
         polygonOffset={true}
         polygonOffsetFactor={4}
         polygonOffsetUnits={4}
+        color={config.terrainColor ?? "#ffffff"}
       />
     </mesh>
   );

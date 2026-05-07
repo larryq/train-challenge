@@ -52,7 +52,7 @@ export function SummaryScreen() {
   if (phase !== "summary") return null;
 
   const config = getLevelConfig(currentLevel);
-  const isLastLevel = currentLevel >= 4;
+  const isLastLevel = currentLevel >= 6;
   const nextLabel = isLastLevel ? "Start Over" : "Next Level";
 
   return (
@@ -177,10 +177,7 @@ export function SummaryScreen() {
             label="Session Score"
             value={sessionScore.toLocaleString()}
           />
-          <StatRow
-            label="Rubies Collected"
-            value={`${levelRubies} / ${totalRubies}`}
-          />
+          <StatRow label="Rubies Collected" value={`${levelRubies}`} />
           <StatRow
             label="Mailbags Delivered"
             value={`${levelMailbags} / ${totalMailbags}`}

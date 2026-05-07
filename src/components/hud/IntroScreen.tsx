@@ -313,6 +313,18 @@ export function IntroScreen() {
           Be sure to click on flashing red signals to turn them green before
           passing, or else your score will suffer.
         </div>
+        <div
+          style={{
+            fontFamily: "Playfair Display, serif",
+            fontSize: "16px",
+            lineHeight: "1.7",
+            color: "#f5e6c8",
+            marginBottom: "12px",
+            textAlign: "left",
+          }}
+        >
+          You'll get a new level / terrain every 90 seconds.
+        </div>
 
         <div
           style={{

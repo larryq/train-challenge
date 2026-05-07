@@ -17,9 +17,10 @@ export interface LevelConfig {
 export const LEVEL_CONFIGS: LevelConfig[] = [
   {
     level: 1,
-    duration: 120,
+    duration: 90,
     trainSpeed: 6,
     label: "Rocky Plains",
+
     terrainTextures: {
       map: "/textures/rocky_terrain_02_diff_1k.jpg",
       normalMap: "/textures/rocky_terrain_02_nor_gl_1k.jpg",
@@ -36,7 +37,7 @@ export const LEVEL_CONFIGS: LevelConfig[] = [
   },
   {
     level: 2,
-    duration: 120,
+    duration: 90,
     trainSpeed: 6,
     label: "Grasslands",
     terrainTextures: {
@@ -50,12 +51,12 @@ export const LEVEL_CONFIGS: LevelConfig[] = [
       "/models/tree4a.glb",
     ],
     treeWeights: [0.5, 0.35, 0.15],
-    aoStrength: 0.7,
-    terrainColor: "#282828",
+    aoStrength: 1.0,
+    terrainColor: "#e6dada",
   },
   {
     level: 3,
-    duration: 120,
+    duration: 90,
     trainSpeed: 6,
     label: "Coastal",
     terrainTextures: {
@@ -74,18 +75,56 @@ export const LEVEL_CONFIGS: LevelConfig[] = [
   },
   {
     level: 4,
-    duration: 120,
+    duration: 90,
     trainSpeed: 6,
-    label: "Winter Pass",
+    label: "Snowy day",
     terrainTextures: {
       map: "/textures/snow_field_aerial_col_1k.jpg",
       normalMap: "/textures/snow_field_aerial_nor_gl_1k.jpg",
       aoMap: "/textures/snow_field_aerial_ao_1k.jpg",
     },
     treeGlbs: [
-      "/models/tree6a.glb",
-      "/models/tree7a.glb",
-      "/models/tree8a.glb",
+      "/models/tree_christmas_snow_1.glb",
+      "/models/tree_pine_snow_1.glb",
+      "/models/tree_round_snow_1.glb",
+    ],
+    treeWeights: [0.4, 0.4, 0.2],
+    aoStrength: 1.0,
+    terrainColor: "#ffffff",
+  },
+  {
+    level: 5,
+    duration: 90,
+    trainSpeed: 6,
+    label: "Winter Pass",
+    terrainTextures: {
+      map: "/textures/Snow004_1K-JPG_Color.jpg",
+      normalMap: "/textures/Snow004_1K-JPG_NormalGL.jpg",
+      aoMap: "/textures/Snow004_1K-JPG_Roughness.jpg",
+    },
+    treeGlbs: [
+      "/models/tree_christmas_snow_2.glb",
+      "/models/tree_pine_snow_2.glb",
+      "/models/tree_round_snow_2.glb",
+    ],
+    treeWeights: [0.4, 0.4, 0.2],
+    aoStrength: 1.0,
+    terrainColor: "#ffffff",
+  },
+  {
+    level: 6,
+    duration: 90,
+    trainSpeed: 6,
+    label: "Iceberg road",
+    terrainTextures: {
+      map: "/textures/Ice001_1K-JPG_Color.jpg",
+      normalMap: "/textures/Ice001_1K-JPG_NormalGL.jpg",
+      aoMap: "/textures/Ice001_1K-JPG_AmbientOcclusionMap.jpg",
+    },
+    treeGlbs: [
+      "/models/tree_christmas_snow_2.glb",
+      "/models/tree_pine_snow_2.glb",
+      "/models/tree_round_snow_2.glb",
     ],
     treeWeights: [0.4, 0.4, 0.2],
     aoStrength: 1.0,
