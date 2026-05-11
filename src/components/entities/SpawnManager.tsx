@@ -116,8 +116,6 @@ export function SpawnManager({
       isExpired: false,
     });
     incrementTotalRubies();
-
-    console.log("SpawnManager: spawned ruby cluster at", position);
   }, [masterCurveRef, trainTRef, spawnRubyCluster, incrementTotalRubies]);
 
   const spawnBag = useCallback(() => {

@@ -7,6 +7,10 @@ import * as THREE from "three";
 import { useDayNight, type DayNightValues } from "../../hooks/useDayNight";
 import { Stars } from "./Stars";
 import { memo } from "react";
+import { RainSystem } from "./RainSystem";
+//import { RainImpacts } from "./RainImpacts";
+import { RainImpacts } from "./RainImpacts3";
+import { BirdSystem } from "./BirdSystem";
 
 const SUN_POSITION: [number, number, number] = [100, 30, -400];
 
@@ -21,6 +25,7 @@ interface CloudData {
 interface EnvironmentProps {
   trainPositionRef: React.MutableRefObject<THREE.Vector3>;
   dayNight: DayNightValues;
+  trainDirectionRef: React.MutableRefObject<THREE.Vector3>;
 }
 
 const CLOUD_CONFIG: CloudData[] = [
@@ -119,8 +124,13 @@ const CloudSystem = memo(function CloudSystem({
   );
 });
 
-export function Environment({ trainPositionRef, dayNight }: EnvironmentProps) {
+export function Environment({
+  trainPositionRef,
+  dayNight,
+  trainDirectionRef,
+}: EnvironmentProps) {
   const dn = dayNight;
+  const rainIntensityRef = useRef<number>(0);
   return (
     <>
       {/* physically based sky */}
@@ -142,7 +152,18 @@ export function Environment({ trainPositionRef, dayNight }: EnvironmentProps) {
         //sunPosition={[100, 2, -400]}
         sunIntensity={dn.sunIntensity}
       />
-
+      <RainSystem
+        trainPositionRef={trainPositionRef}
+        rainIntensityRef={rainIntensityRef}
+      />
+      <RainImpacts
+        trainPositionRef={trainPositionRef}
+        rainIntensityRef={rainIntensityRef}
+      />
+      <BirdSystem
+        trainPositionRef={trainPositionRef}
+        trainDirectionRef={trainDirectionRef}
+      />
       {/* late afternoon warm lighting */}
       <directionalLight
         position={dn.sunPosition}

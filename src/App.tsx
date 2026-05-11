@@ -41,6 +41,7 @@ import { LEVEL_CONFIGS } from "./lib/levelConfig";
 
 interface SceneProps {
   trainPositionRef: React.MutableRefObject<THREE.Vector3>;
+  trainDirectionRef: React.MutableRefObject<THREE.Vector3>;
   masterCurveRef: React.MutableRefObject<THREE.CatmullRomCurve3 | null>;
   trainTRef: React.MutableRefObject<number>;
   isActiveRef: React.MutableRefObject<boolean>;
@@ -77,6 +78,7 @@ function BonusText() {
 
 function Scene({
   trainPositionRef,
+  trainDirectionRef,
   masterCurveRef,
   trainTRef,
   isActiveRef,
@@ -98,7 +100,11 @@ function Scene({
   return (
     <>
       <Stats />
-      <Environment trainPositionRef={trainPositionRef} dayNight={dayNight} />
+      <Environment
+        trainPositionRef={trainPositionRef}
+        dayNight={dayNight}
+        trainDirectionRef={trainDirectionRef}
+      />
       <SegmentPreloader onReady={handleReady} />
 
       {loadedSegments && (
@@ -115,6 +121,7 @@ function Scene({
           <Train
             masterCurveRef={masterCurveRef}
             trainPositionRef={trainPositionRef}
+            trainDirectionRef={trainDirectionRef}
             trainTRef={trainTRef}
             cycleValue={dayNight.cycleValue}
           />
@@ -251,6 +258,7 @@ export default function App() {
   // refs live here so they can be shared between
   // inside-Canvas (GrabSystem) and outside-Canvas (CrosshairVisual)
   const trainPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
+  const trainDirectionRef = useRef<THREE.Vector3>(new THREE.Vector3());
   const masterCurveRef = useRef<THREE.CatmullRomCurve3 | null>(null);
   const trainTRef = useRef(0);
 
@@ -271,6 +279,7 @@ export default function App() {
         <Suspense fallback={null}>
           <Scene
             trainPositionRef={trainPositionRef}
+            trainDirectionRef={trainDirectionRef}
             masterCurveRef={masterCurveRef}
             trainTRef={trainTRef}
             isActiveRef={isActiveRef}

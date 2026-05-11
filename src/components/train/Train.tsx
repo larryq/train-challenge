@@ -36,6 +36,7 @@ import smokeFrag from "../../shaders/smoke.frag.glsl";
 interface TrainProps {
   masterCurveRef: React.MutableRefObject<THREE.CatmullRomCurve3 | null>;
   trainPositionRef: React.MutableRefObject<THREE.Vector3>;
+  trainDirectionRef: React.MutableRefObject<THREE.Vector3>;
   trainTRef: React.MutableRefObject<number>;
   cycleValue: number;
 }
@@ -76,6 +77,7 @@ function createTrainLightMaterial(): THREE.ShaderMaterial {
 export function Train({
   masterCurveRef,
   trainPositionRef,
+  trainDirectionRef,
   trainTRef,
   cycleValue,
 }: TrainProps) {
@@ -200,6 +202,8 @@ export function Train({
 
     // pitch -- derived from tangent Y component
     const tangent = curve.getTangentAt(newT);
+    trainDirectionRef.current = tangent;
+
     const targetPitch = Math.asin(THREE.MathUtils.clamp(tangent.y, -1, 1));
 
     // smooth pitch transition
